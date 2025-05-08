@@ -18,6 +18,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support import expected_conditions as EC
 
+# some dumb cases handled in a dumb way -- Google Scholar
+# reports such weird text for these journals, this had to
+# be done :(
+journal_mapping = {'arxiv': 'arXiv',
+                   'biorxiv': 'bioRxiv',
+                   'medrxiv': 'medRxiv'}
 
 class JournalParser:
     """Handles parsing and cleaning of journal information from Google Scholar"""
@@ -25,6 +31,16 @@ class JournalParser:
     @staticmethod
     def clean_journal_name(venue_info):
         """Extract just the journal name from the venue information"""
+
+        if not venue_info:
+            return ""
+
+        # Some special cases
+        venue_info_lower = venue_info.lower()
+        for key in journal_mapping:
+            if venue_info_lower.startswith(key):
+                return journal_mapping[key]
+
         # Pattern to match volume/issue information
         volume_pattern = r'\s+\d+\s*(\(\d+\))?.*$'
 
