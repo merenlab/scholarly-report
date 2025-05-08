@@ -3,6 +3,7 @@
 import re
 import sys
 import json
+import random
 import argparse
 import pandas as pd
 import networkx as nx
@@ -802,7 +803,7 @@ class HTMLGenerator:
 
             <div class="card">
                 <h2 class="card-title">Researchers from the {self.institute_name} included in this report</h2>
-                <table>
+                <table id="researchers-table" class="display">
                     <thead>
                         <tr>
                             <th>Name</th>
@@ -817,12 +818,9 @@ class HTMLGenerator:
                     <tbody>
         """
 
-        # Add author rows sorted by citation count
-        sorted_authors = sorted(
-            self.data.authors.items(),
-            key=lambda x: int(x[1].get('total_citations', 0)),
-            reverse=True
-        )
+        # Randomize the authors
+        sorted_authors = list(self.data.authors.items())
+        random.shuffle(sorted_authors)
 
         for author_id, author in sorted_authors:
             stats = author_stats[author_id]
@@ -987,6 +985,19 @@ class HTMLGenerator:
                     }
                 );
             });
+
+            // Initialize the researchers table with DataTables so we can sort things
+            $('#researchers-table').DataTable({
+                "paging": false,
+                "info": false,
+                "order": [],  // No initial sorting (keeps the random order)
+                "columnDefs": [
+                    { "type": "html", "targets": 0 }  // For proper sorting of name column with links
+                ],
+                "autoWidth": false,  // Prevent automatic width calculation
+                "scrollX": true      // Add horizontal scrolling if needed
+            });
+
         </script>
         """
 
@@ -1266,6 +1277,26 @@ class HTMLGenerator:
             </script>
             """
 
+        # Include the necessary scirpts.
+        html += """
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                $('#publications-table').DataTable({
+                    "paging": false,
+                    "info": false,
+                    "order": [[0, 'desc'], [3, 'desc']], // Default sort by year desc, then citations desc
+                    "columnDefs": [
+                        { "type": "html", "targets": 1 }, // For proper sorting of title column with links
+                        { "type": "num", "targets": [0, 3] } // Numeric sorting for year and citations
+                    ],
+                    "autoWidth": false
+                });
+            });
+        </script>
+        """
+
         # Top journals
         if journals:
             top_journals = journals.most_common(10)
@@ -1369,6 +1400,9 @@ class HTMLGenerator:
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>{title}</title>
             <link rel="stylesheet" href="{prefix}/css/style.css">
+            <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
             <!-- Add debug console output -->
             <script>
                 console.log("Page loaded: {title}");
