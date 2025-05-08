@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Martin Koenneke - Scholar Profile</title>
+            <link rel="stylesheet" href="../css/style.css">
+            <!-- Add debug console output -->
+            <script>
+                console.log("Page loaded: Martin Koenneke - Scholar Profile");
+                console.log("Active page: authors");
+                console.log("Using prefix: ..");
+            </script>
+        </head>
+        <body>
+            <header>
+                <h1>Scholarly Data For Scientists at the ICBM</h1>
+            </header>
+
+            <nav>
+                <ul>
+                    <li><a href="../index.html">Publications Overview</a></li>
+                    <li><a href="../journals.html">Journals Overview</a></li>
+                </ul>
+            </nav>
+        
+        <div class="container">
+            <div class="card">
+                <h2 class="card-title">Martin Koenneke</h2>
+                <p>Professor of Marine Microbiology, ICBM, University of Oldenburg</p>
+
+                <div class="author-stats">
+                    <div class="stat-box">
+                        <div class="stat-number">3</div>
+                        <div class="stat-label">Publications</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">11</div>
+                        <div class="stat-label">Citations</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">35</div>
+                        <div class="stat-label">h-index</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">45</div>
+                        <div class="stat-label">i10-index</div>
+                    </div>
+                </div>
+
+                <p><a href="https://scholar.google.com/citations?user=2bC6aPsAAAAJ" target="_blank">View Google Scholar Profile</a></p>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Publications</h2>
+                <p>Showing 3 publications sorted by year (newest first):</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Year</th>
+                            <th>Title</th>
+                            <th>Journal</th>
+                            <th>Citations</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        
+                        <tr>
+                            <td>2025</td>
+                            <td><a href='https://scholar.google.com/citations?view_op=view_citation&hl=en&user=2bC6aPsAAAAJ&cstart=20&pagesize=80&citation_for_view=2bC6aPsAAAAJ:pqnbT2bcN3wC' target='_blank'>Interstitial microbial communities of coastal sediments are dominated by Nanoarchaeota</a></td>
+                            <td>Frontiers in Microbiology</td>
+                            <td>0</td>
+                        </tr>
+            
+                        <tr>
+                            <td>2024</td>
+                            <td><a href='https://scholar.google.com/citations?view_op=view_citation&hl=en&user=2bC6aPsAAAAJ&cstart=20&pagesize=80&citation_for_view=2bC6aPsAAAAJ:M05iB0D1s5AC' target='_blank'>Earth's most needed uncultivated aquatic prokaryotes</a></td>
+                            <td>Water Research</td>
+                            <td>0</td>
+                        </tr>
+            
+                        <tr>
+                            <td>2023</td>
+                            <td><a href='https://scholar.google.com/citations?view_op=view_citation&hl=en&user=2bC6aPsAAAAJ&cstart=20&pagesize=80&citation_for_view=2bC6aPsAAAAJ:RYcK_YlVTxYC' target='_blank'>Microbial drivers of DMSO reduction and DMS-dependent methanogenesis in saltmarsh sediments</a></td>
+                            <td>The ISME Journal</td>
+                            <td>11</td>
+                        </tr>
+            
+                    </tbody>
+                </table>
+            </div>
+        
+            <div class="card">
+                <h2 class="card-title">Publication Trends</h2>
+                <div style="height: 400px; position: relative; margin-bottom: 90px; overflow: visible;">
+                    <canvas id="publication-chart"></canvas>
+                </div>
+                <!-- Add a clear div to force proper spacing -->
+                <div style="clear: both; height: 60px;"></div>
+            </div>
+
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('Setting up publication chart');
+                    const canvas = document.getElementById('publication-chart');
+                    if (!canvas) {
+                        console.error('Canvas element not found');
+                        return;
+                    }
+
+                    // Direct data embedding
+                    const chartLabels = ["2023", "2024", "2025"];
+                    const pubData = [1, 1, 1];
+                    const citData = [11, 0, 0];
+
+                    console.log('Chart data:', {
+                        labels: chartLabels,
+                        pubData: pubData,
+                        citData: citData
+                    });
+
+                    try {
+                        const chart = new Chart(canvas, {
+                            type: 'bar',
+                            data: {
+                                labels: chartLabels,
+                                datasets: [{
+                                    label: 'Publications',
+                                    data: pubData,
+                                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                                    borderColor: 'rgba(54, 162, 235, 1)',
+                                    borderWidth: 1
+                                }, {
+                                    label: 'Citations',
+                                    data: citData,
+                                    yAxisID: 'y1',
+                                    type: 'line',
+                                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                                    borderColor: 'rgba(255, 99, 132, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: true,
+                                layout: {
+                                    padding: {
+                                        top: 10,
+                                        right: 10,
+                                        bottom: 30,
+                                        left: 10
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                        align: 'start',
+                                        labels: {
+                                            boxWidth: 15,
+                                            padding: 10,
+                                            font: {
+                                                size: 12
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        title: {
+                                            display: true,
+                                            text: 'Publications'
+                                        }
+                                    },
+                                    y1: {
+                                        beginAtZero: true,
+                                        position: 'right',
+                                        title: {
+                                            display: true,
+                                            text: 'Citations'
+                                        },
+                                        grid: {
+                                            drawOnChartArea: false
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        console.log('Chart created successfully');
+                    } catch (error) {
+                        console.error('Error creating chart:', error);
+                    }
+                });
+            </script>
+            
+            <div class="card">
+                <h2 class="card-title">Top Publication Venues</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Journal</th>
+                            <th>Publications</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            
+                        <tr>
+                            <td>Frontiers in Microbiology</td>
+                            <td>1</td>
+                        </tr>
+                
+                        <tr>
+                            <td>Water Research</td>
+                            <td>1</td>
+                        </tr>
+                
+                        <tr>
+                            <td>The ISME Journal</td>
+                            <td>1</td>
+                        </tr>
+                
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
+        
+            <footer>
+                <p><small>Meren updated this on 2025-05-08</small></p>
+            </footer>
+        </body>
+        </html>
+        

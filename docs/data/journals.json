@@ -1,0 +1,632 @@
+[
+  {
+    "journal": "bioRxiv",
+    "publications": 20,
+    "citations": 56,
+    "avg_citations": 2.8
+  },
+  {
+    "journal": "Environmental Science & Technology",
+    "publications": 8,
+    "citations": 63,
+    "avg_citations": 7.9
+  },
+  {
+    "journal": "Science of The Total Environment",
+    "publications": 7,
+    "citations": 39,
+    "avg_citations": 5.6
+  },
+  {
+    "journal": "Limnology and Oceanography",
+    "publications": 6,
+    "citations": 28,
+    "avg_citations": 4.7
+  },
+  {
+    "journal": "Limnology and Oceanography Letters",
+    "publications": 5,
+    "citations": 93,
+    "avg_citations": 18.6
+  },
+  {
+    "journal": "ISME Communications",
+    "publications": 5,
+    "citations": 18,
+    "avg_citations": 3.6
+  },
+  {
+    "journal": "Frontiers in Marine Science",
+    "publications": 5,
+    "citations": 34,
+    "avg_citations": 6.8
+  },
+  {
+    "journal": "Biogeochemistry",
+    "publications": 4,
+    "citations": 35,
+    "avg_citations": 8.8
+  },
+  {
+    "journal": "Ecology and Evolution",
+    "publications": 3,
+    "citations": 7,
+    "avg_citations": 2.3
+  },
+  {
+    "journal": "arXiv",
+    "publications": 3,
+    "citations": 2,
+    "avg_citations": 0.7
+  },
+  {
+    "journal": "Nature Communications",
+    "publications": 3,
+    "citations": 43,
+    "avg_citations": 14.3
+  },
+  {
+    "journal": "Journal of Geophysical Research: Biogeosciences",
+    "publications": 3,
+    "citations": 2,
+    "avg_citations": 0.7
+  },
+  {
+    "journal": "Ocean Governance (Beyond) Borders",
+    "publications": 3,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "People and Nature",
+    "publications": 2,
+    "citations": 35,
+    "avg_citations": 17.5
+  },
+  {
+    "journal": "Nature Ecology & Evolution",
+    "publications": 2,
+    "citations": 31,
+    "avg_citations": 15.5
+  },
+  {
+    "journal": "Marine Biodiversity",
+    "publications": 2,
+    "citations": 23,
+    "avg_citations": 11.5
+  },
+  {
+    "journal": "Oikos",
+    "publications": 2,
+    "citations": 7,
+    "avg_citations": 3.5
+  },
+  {
+    "journal": "Frontiers in Ecology and Evolution",
+    "publications": 2,
+    "citations": 6,
+    "avg_citations": 3.0
+  },
+  {
+    "journal": "Scientific Data",
+    "publications": 2,
+    "citations": 2,
+    "avg_citations": 1.0
+  },
+  {
+    "journal": "Nature",
+    "publications": 2,
+    "citations": 2,
+    "avg_citations": 1.0
+  },
+  {
+    "journal": "Journal of Geophysical Research: Atmospheres",
+    "publications": 2,
+    "citations": 14,
+    "avg_citations": 7.0
+  },
+  {
+    "journal": "Global Biogeochemical Cycles",
+    "publications": 2,
+    "citations": 13,
+    "avg_citations": 6.5
+  },
+  {
+    "journal": "Geophysical Research Letters",
+    "publications": 2,
+    "citations": 1,
+    "avg_citations": 0.5
+  },
+  {
+    "journal": "Science Advances",
+    "publications": 2,
+    "citations": 20,
+    "avg_citations": 10.0
+  },
+  {
+    "journal": "Analytical Chemistry",
+    "publications": 2,
+    "citations": 2,
+    "avg_citations": 1.0
+  },
+  {
+    "journal": "Scientific Reports",
+    "publications": 2,
+    "citations": 11,
+    "avg_citations": 5.5
+  },
+  {
+    "journal": "Toxics",
+    "publications": 2,
+    "citations": 11,
+    "avg_citations": 5.5
+  },
+  {
+    "journal": "PeerJ",
+    "publications": 2,
+    "citations": 8,
+    "avg_citations": 4.0
+  },
+  {
+    "journal": "Environmental Research",
+    "publications": 2,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Limnology and Oceanography: Methods",
+    "publications": 2,
+    "citations": 32,
+    "avg_citations": 16.0
+  },
+  {
+    "journal": "Water Research",
+    "publications": 2,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Communications Earth & Environment",
+    "publications": 2,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Nature Microbiology",
+    "publications": 2,
+    "citations": 74,
+    "avg_citations": 37.0
+  },
+  {
+    "journal": "Cell",
+    "publications": 2,
+    "citations": 45,
+    "avg_citations": 22.5
+  },
+  {
+    "journal": "Political Geography in Practice: Theories, Approaches, Methodologies",
+    "publications": 2,
+    "citations": 4,
+    "avg_citations": 2.0
+  },
+  {
+    "journal": "Ocean Governance: Knowledge Systems",
+    "publications": 2,
+    "citations": 4,
+    "avg_citations": 2.0
+  },
+  {
+    "journal": "Springer Nature",
+    "publications": 2,
+    "citations": 2,
+    "avg_citations": 1.0
+  },
+  {
+    "journal": "Coral Reefs",
+    "publications": 2,
+    "citations": 5,
+    "avg_citations": 2.5
+  },
+  {
+    "journal": "INTEGRATIVE AND COMPARATIVE BIOLOGY",
+    "publications": 2,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Ecological Monographs",
+    "publications": 1,
+    "citations": 2,
+    "avg_citations": 2.0
+  },
+  {
+    "journal": "Functional Ecology",
+    "publications": 1,
+    "citations": 1,
+    "avg_citations": 1.0
+  },
+  {
+    "journal": "Ecology",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Environmental Data Initiative",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Global Ecology and Biogeography",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Biogeochemistry of Marine Dissolved Organic Matter",
+    "publications": 1,
+    "citations": 159,
+    "avg_citations": 159.0
+  },
+  {
+    "journal": "Atmospheric Chemistry and Physics",
+    "publications": 1,
+    "citations": 2,
+    "avg_citations": 2.0
+  },
+  {
+    "journal": "Handbook of Air Quality and Climate Change",
+    "publications": 1,
+    "citations": 1,
+    "avg_citations": 1.0
+  },
+  {
+    "journal": "Swiss Journal of Geosciences",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Movement Ecology",
+    "publications": 1,
+    "citations": 4,
+    "avg_citations": 4.0
+  },
+  {
+    "journal": "Theoretical Ecology",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "FEMS Microbiology Ecology",
+    "publications": 1,
+    "citations": 5,
+    "avg_citations": 5.0
+  },
+  {
+    "journal": "Freshwater Biology",
+    "publications": 1,
+    "citations": 2,
+    "avg_citations": 2.0
+  },
+  {
+    "journal": "Molecular Biology and Evolution",
+    "publications": 1,
+    "citations": 4,
+    "avg_citations": 4.0
+  },
+  {
+    "journal": "Deep Sea Research Part I: Oceanographic Research Papers",
+    "publications": 1,
+    "citations": 3,
+    "avg_citations": 3.0
+  },
+  {
+    "journal": "Environmental Pollution",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Journal of Experimental Marine Biology and Ecology",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "SETAC North America",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Oceanography and Marine Biology",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Physics Reports",
+    "publications": 1,
+    "citations": 90,
+    "avg_citations": 90.0
+  },
+  {
+    "journal": "Journal of The Royal Society Interface",
+    "publications": 1,
+    "citations": 6,
+    "avg_citations": 6.0
+  },
+  {
+    "journal": "Msystems",
+    "publications": 1,
+    "citations": 5,
+    "avg_citations": 5.0
+  },
+  {
+    "journal": "Physical Review Letters",
+    "publications": 1,
+    "citations": 4,
+    "avg_citations": 4.0
+  },
+  {
+    "journal": "BioData Mining",
+    "publications": 1,
+    "citations": 1,
+    "avg_citations": 1.0
+  },
+  {
+    "journal": "Mobilities",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Journal of Computational Social Science",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Physica A: Statistical Mechanics and Its Applications",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Environmental Chemistry Letters",
+    "publications": 1,
+    "citations": 40,
+    "avg_citations": 40.0
+  },
+  {
+    "journal": "Journal of The American Society For Mass Spectrometry",
+    "publications": 1,
+    "citations": 20,
+    "avg_citations": 20.0
+  },
+  {
+    "journal": "Biogeosciences",
+    "publications": 1,
+    "citations": 8,
+    "avg_citations": 8.0
+  },
+  {
+    "journal": "Natural Products and Bioprospecting",
+    "publications": 1,
+    "citations": 3,
+    "avg_citations": 3.0
+  },
+  {
+    "journal": "Marine Chemistry",
+    "publications": 1,
+    "citations": 2,
+    "avg_citations": 2.0
+  },
+  {
+    "journal": "Nature Geoscience",
+    "publications": 1,
+    "citations": 1,
+    "avg_citations": 1.0
+  },
+  {
+    "journal": "Bulletin of Marine Science",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Microbial Physiology",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "FRONTIERS IN MARINE SCIENCE",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Genome Biology",
+    "publications": 1,
+    "citations": 79,
+    "avg_citations": 79.0
+  },
+  {
+    "journal": "Nature Methods",
+    "publications": 1,
+    "citations": 18,
+    "avg_citations": 18.0
+  },
+  {
+    "journal": "Advanced Science",
+    "publications": 1,
+    "citations": 12,
+    "avg_citations": 12.0
+  },
+  {
+    "journal": "Mbio",
+    "publications": 1,
+    "citations": 7,
+    "avg_citations": 7.0
+  },
+  {
+    "journal": "Journal of Crohn's and Colitis",
+    "publications": 1,
+    "citations": 6,
+    "avg_citations": 6.0
+  },
+  {
+    "journal": "Applied and Environmental Microbiology",
+    "publications": 1,
+    "citations": 2,
+    "avg_citations": 2.0
+  },
+  {
+    "journal": "Bioinformatics Advances",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Microbiology Spectrum",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Nature Sustainability",
+    "publications": 1,
+    "citations": 18,
+    "avg_citations": 18.0
+  },
+  {
+    "journal": "Routledge",
+    "publications": 1,
+    "citations": 18,
+    "avg_citations": 18.0
+  },
+  {
+    "journal": "Journal of Environmental Policy & Planning",
+    "publications": 1,
+    "citations": 2,
+    "avg_citations": 2.0
+  },
+  {
+    "journal": "Marine Policy",
+    "publications": 1,
+    "citations": 2,
+    "avg_citations": 2.0
+  },
+  {
+    "journal": "Geography Compass",
+    "publications": 1,
+    "citations": 2,
+    "avg_citations": 2.0
+  },
+  {
+    "journal": "North West Geography",
+    "publications": 1,
+    "citations": 1,
+    "avg_citations": 1.0
+  },
+  {
+    "journal": "You Are Here: Journal of Creative Geography",
+    "publications": 1,
+    "citations": 1,
+    "avg_citations": 1.0
+  },
+  {
+    "journal": "Maritime Studies",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Emotion Space and Society",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Cultural Geographies",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "DIALOGUES IN HUMAN GEOGRAPHY",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Dialogues in Human Geography",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "The ISME Journal",
+    "publications": 1,
+    "citations": 11,
+    "avg_citations": 11.0
+  },
+  {
+    "journal": "Frontiers in Microbiology",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Global Change Biology",
+    "publications": 1,
+    "citations": 12,
+    "avg_citations": 12.0
+  },
+  {
+    "journal": "Nature Climate Change",
+    "publications": 1,
+    "citations": 9,
+    "avg_citations": 9.0
+  },
+  {
+    "journal": "Molecular Ecology",
+    "publications": 1,
+    "citations": 8,
+    "avg_citations": 8.0
+  },
+  {
+    "journal": "Restoration Ecology",
+    "publications": 1,
+    "citations": 6,
+    "avg_citations": 6.0
+  },
+  {
+    "journal": "BMC Genomics",
+    "publications": 1,
+    "citations": 5,
+    "avg_citations": 5.0
+  },
+  {
+    "journal": "Coral Restoration Consortium",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "G3: Genes, Genomes, Genetics",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  },
+  {
+    "journal": "Authorea Preprints",
+    "publications": 1,
+    "citations": 0,
+    "avg_citations": 0.0
+  }
+]
