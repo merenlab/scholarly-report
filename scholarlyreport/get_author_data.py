@@ -307,14 +307,6 @@ class GoogleScholarScraper:
                 alternative_authors = self.driver.find_elements(By.CSS_SELECTOR, "#gsc_oci_title_authors .gsc_oci_value")
                 if alternative_authors and len(alternative_authors) > 0:
                     full_authors = alternative_authors[0].text
-
-                # Try to get better journal information from the detail page
-                journal_elements = self.driver.find_elements(By.CSS_SELECTOR, ".gsc_oci_field")
-                for j, field in enumerate(journal_elements):
-                    if "Journal" in field.text or "Conference" in field.text:
-                        if j < len(author_elements):
-                            detail_venue = author_elements[j].text
-                            # This will be processed later in the Publication constructor
             except Exception as e:
                 print(f"Could not find full details in popup: {e}")
 

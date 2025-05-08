@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import os
 import re
 import sys
 import json
@@ -1312,7 +1311,6 @@ class HTMLGenerator:
 
     def _page_header(self, title, active_page="index"):
         """Generate the common header for all pages"""
-        current_year = datetime.now().year
 
         # Calculate relative path prefix based on active page
         prefix = '..' if active_page == 'authors' else '.'
@@ -1346,7 +1344,6 @@ class HTMLGenerator:
 
     def _page_footer(self):
         """Generate the common footer for all pages"""
-        current_year = datetime.now().year
 
         return f"""
             <footer>

@@ -2,53 +2,79 @@
 
 The tools here are meant to solve a very annoying issue: preparing reports for departments or institutes that require to collect all the publication information from a number of authors. I implemented these tools to address that issue. It works with Google Scholar IDs.
 
-What you see here works in two steps: (1) collecting author data, and (2) generating a report for all authors.
+# Installation
+
+To install this package, simply run the following commands:
+
+```bash
+# make sure there is an appropriate directory
+# somewhere to clone the project
+mkdir -p ~/github/
+cd ~/github/
+
+# get a copy of the git repository
+git clone https://github.com/merenlab/scholarly-report.git
+cd scholarly-report
+
+# install:
+pip install -e .
+```
+
+This should install everything. The package name is `scholarly-report`, and you can easily remove it from your system with the following command (which you shouldn't run NOW if you want to play with it):
+
+```bash
+pip uninstall scholarly-report
+```
+
+# Usage
+
+The package does its work in two steps: (1) collecting author data, and (2) generating a report for all authors. The following sections explain the deatils for each step.
 
 ## Collecting author data
 
 Author data are collected for each author one by one, and accumulate in an output directory. For instance, this command will collect information about ALL the publications for the author whose Google Scholar profile is [GtLLuxoAAAAJ](https://scholar.google.com/citations?user=GtLLuxoAAAAJ&hl=en), and store key files under the `SCHOLARLY_DATA` directory:
 
 ```bash
-python get-author-data GtLLuxoAAAAJ \
-                       --output-dir SCHOLARLY_DATA
+sc-get-author-data GtLLuxoAAAAJ \
+                   --output-dir SCHOLARLY_DATA
 ```
 
 But this is rarely useful, since reporting tasks require only a certain period. So you can get publications until a certain year:
 
 ```bash
 # retrieve information for publications appeared in literature until 2021
-python get-author-data GtLLuxoAAAAJ \
-                       --max-year 2021 \
-                       --output-dir SCHOLARLY_DATA
+sc-get-author-data GtLLuxoAAAAJ \
+                   --max-year 2021 \
+                   --output-dir SCHOLARLY_DATA
 ```
 
 Get those only appeared after a certain year:
 
 ```bash
 # retrieve information for publications appeared in literature after 2023
-python get-author-data GtLLuxoAAAAJ \
-                       --min-year 2023 \
-                       --output-dir SCHOLARLY_DATA
+sc-get-author-data GtLLuxoAAAAJ \
+                   --min-year 2023 \
+                   --output-dir SCHOLARLY_DATA
 ```
 
 Or within a period:
 
 ```bash
 # retrieve information for publications appeared in literature after 2023
-python get-author-data GtLLuxoAAAAJ \
-                       --min-year 2020 \
-                       --max-year 2024 \
-                       --output-dir SCHOLARLY_DATA
+sc-get-author-data GtLLuxoAAAAJ \
+                   --min-year 2020 \
+                   --max-year 2024 \
+                   --output-dir SCHOLARLY_DATA
 ```
 
 This will give you publications from this author ONLY in the year 2024:
 
 ```bash
 # retrieve information for publications appeared in literature after 2023
-python get-author-data GtLLuxoAAAAJ \
-                       --min-year 2024 \
-                       --max-year 2024 \
-                       --output-dir SCHOLARLY_DATA
+sc-get-author-data GtLLuxoAAAAJ \
+                   --min-year 2024 \
+                   --max-year 2024 \
+                   --output-dir SCHOLARLY_DATA
 ```
 
 This is handy since some people may have started later than the beginning of the reporting period, so by explicitly defining a window for each author is important for accurate reporting.
@@ -64,9 +90,9 @@ Assuming the data have been accumulating in the directory `SCHOLARLY_DATA`, you 
 Running this will generate an output directory with all the web content:
 
 ```bash
-python produce-web-report SCHOLARLY_DATA \
-                          --output-dir SCHOLARLY_REPORT \
-                          --institute-name ICBM
+sc-produce-web-report SCHOLARLY_DATA \
+                      --output-dir SCHOLARLY_REPORT \
+                      --institute-name ICBM
 ```
 
 It is important to provide an institute name, otherwise the output will look very ugly.
@@ -74,10 +100,10 @@ It is important to provide an institute name, otherwise the output will look ver
 Another thing that will certainly look ugly will be the _journal names_. Since Google Scholar collects everything, conference abstracts and other irrelevant entries really makes the report look quite crappy. If you want, you can creat a flat text file with 'unwanted journal names', and send it to this program to they are excluded from the reporting:
 
 ```bash
-python produce-web-report SCHOLARLY_DATA \
-                          --output-dir SCHOLARLY_REPORT \
-                          --institute-name ICBM \
-                          --exclude-journals JOURNAL-NAMES-TO-EXCLUDE.txt
+sc-produce-web-report SCHOLARLY_DATA \
+                      --output-dir SCHOLARLY_REPORT \
+                      --institute-name ICBM \
+                      --exclude-journals JOURNAL-NAMES-TO-EXCLUDE.txt
 ```
 
 There should be a single journal name in each line of this file, and they don't have to be complete. The code is smart enough to find "2024 Ocean Sciences Meeting" if you only put in "Ocean Sciences Meeting" or "Meeting".
@@ -104,9 +130,9 @@ GOOGLE_SCHOLAR_IDS="GtLLuxoAAAAJ bxXw-JUAAAAJ 83LAYbIAAAAJ atQ-4b8AAAAJ UmlxKj4A
 # for each Google Scholar profiles
 for GSID in $GOOGLE_SCHOLAR_IDS
 do
-    python get-author-data $GSID \
-                           --min-year 2023 \
-                           --output-dir SCHOLARLY_DATA
+    sc-get-author-data $GSID \
+                       --min-year 2023 \
+                       --output-dir SCHOLARLY_DATA
 done
 
 # generate a file that contains unwanted journal
@@ -126,10 +152,10 @@ Oekom
 EOF
 
 # Generate a report directory
-python produce-web-report SCHOLARLY_DATA \
-                          --output-dir SCHOLARLY_REPORT \
-                          --exclude-journals JOURNAL-NAMES-TO-EXCLUDE.txt \
-                          --institute-name ICBM
+sc-produce-web-report SCHOLARLY_DATA \
+                      --output-dir SCHOLARLY_REPORT \
+                      --exclude-journals JOURNAL-NAMES-TO-EXCLUDE.txt \
+                      --institute-name ICBM
 
 # go into the output directory
 cd SCHOLARLY_REPORT
@@ -184,4 +210,4 @@ Then there is the entire 'journals' page:
 
 ![image](https://github.com/user-attachments/assets/c3f423f6-02b6-4192-8276-d0a3bc00d11d)
 
-This is a great page to find crappy journal names,  update `JOURNAL-NAMES-TO-EXCLUDE.txt`, and re-run the `produce-web-report` command with the same parameters.
+This is a great page to find crappy journal names,  update `JOURNAL-NAMES-TO-EXCLUDE.txt`, and re-run the `sc-produce-web-report` command with the same parameters.
