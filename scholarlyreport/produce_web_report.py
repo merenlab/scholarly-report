@@ -776,7 +776,7 @@ class HTMLGenerator:
             <div class="card">
                 <h2 class="card-title">Total number of publications per year</h2>
                 <p>This chart includes publications authored by the {total_authors} authors at the {self.institute_name}.
-                <div style="height: 400px; position: relative; margin-bottom: 60px;">
+                <div style="height: 450px; position: relative; margin-bottom: 60px;">
                     <canvas id="yearly-publications-chart"></canvas>
                 </div>
                 <div style="clear: both; height: 60px;"></div>
@@ -785,7 +785,7 @@ class HTMLGenerator:
             <div class="card">
                 <h2 class="card-title">Citation Trends</h2>
                 <p>The total number of citations accumulated over the years by work published between {min_year} and {max_year} by the {total_authors} authors included in this report.
-                <div style="height: 400px; position: relative; margin-bottom: 60px;">
+                <div style="height: 450px; position: relative; margin-bottom: 60px;">
                     <canvas id="citation-trends-chart"></canvas>
                 </div>
                 <div style="clear: both; height: 60px;"></div>
