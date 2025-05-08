@@ -26,12 +26,11 @@
                     <li><a href="../journals.html">Journals Overview</a></li>
                 </ul>
             </nav>
-        
         <div class="container">
             <div class="card">
                 <h2 class="card-title">Thilo Gross</h2>
 
-                <p>Overview of the selected period (between <b>2023</b> to <b>2025</b>):
+                <p>Overview of the period between <b>2023</b> to <b>2025</b>:
 
                 <div class="author-stats">
                     <div class="stat-box">
@@ -75,7 +74,108 @@
 
                 <p><a href="https://scholar.google.com/citations?user=eogyTQUAAAAJ" target="_blank">View Google Scholar Profile</a></p>
             </div>
-
+            
+            <div class="card">
+                <h2 class="card-title">Publication Trends</h2>
+                <p>Trends for the period between <b>2023</b> to <b>2025</b>:
+                <div style="height: 400px; position: relative; margin-bottom: 90px; overflow: visible;">
+                    <canvas id="publication-chart"></canvas>
+                </div>
+                <!-- Add a clear div to force proper spacing -->
+                <div style="clear: both; height: 60px;"></div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">Co-Authors</h2>
+                <p>List of co-authors included in this analysis and the number of publications they shared with Thilo Gross between <b>2023</b> to <b>2025</b>:
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Shared Publications</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            
+                            <tr>
+                                <td><a href="bxXw-JUAAAAJ.html">Helmut Hillebrand</a></td>
+                                <td>2</td>
+                            </tr>
+                
+                            <tr>
+                                <td><a href="SRJug_AAAAAJ.html">Kimberley Peters</a></td>
+                                <td>1</td>
+                            </tr>
+                
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">Top Publication Venues</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Journal</th>
+                            <th>Publications</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            
+                        <tr>
+                            <td>arXiv</td>
+                            <td>3</td>
+                        </tr>
+                
+                        <tr>
+                            <td>Mobilities</td>
+                            <td>1</td>
+                        </tr>
+                
+                        <tr>
+                            <td>Journal of The Royal Society Interface</td>
+                            <td>1</td>
+                        </tr>
+                
+                        <tr>
+                            <td>People and Nature</td>
+                            <td>1</td>
+                        </tr>
+                
+                        <tr>
+                            <td>BioData Mining</td>
+                            <td>1</td>
+                        </tr>
+                
+                        <tr>
+                            <td>Journal of Computational Social Science</td>
+                            <td>1</td>
+                        </tr>
+                
+                        <tr>
+                            <td>Physica A: Statistical Mechanics and Its Applications</td>
+                            <td>1</td>
+                        </tr>
+                
+                        <tr>
+                            <td>Physics Reports</td>
+                            <td>1</td>
+                        </tr>
+                
+                        <tr>
+                            <td>Msystems</td>
+                            <td>1</td>
+                        </tr>
+                
+                        <tr>
+                            <td>Physical Review Letters</td>
+                            <td>1</td>
+                        </tr>
+                
+                    </tbody>
+                </table>
+            </div>
+            
             <div class="card">
                 <h2 class="card-title">Publications</h2>
                 <p>Showing 14 publications sorted by year (newest first):</p>
@@ -192,136 +292,103 @@
                     </tbody>
                 </table>
             </div>
-        
-            <div class="card">
-                <h2 class="card-title">Co-Authors</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Shared Publications</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            
-                            <tr>
-                                <td><a href="bxXw-JUAAAAJ.html">Helmut Hillebrand</a></td>
-                                <td>2</td>
-                            </tr>
-                
-                            <tr>
-                                <td><a href="SRJug_AAAAAJ.html">Kimberley Peters</a></td>
-                                <td>1</td>
-                            </tr>
-                
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="card">
-                <h2 class="card-title">Publication Trends</h2>
-                <div style="height: 400px; position: relative; margin-bottom: 90px; overflow: visible;">
-                    <canvas id="publication-chart"></canvas>
-                </div>
-                <!-- Add a clear div to force proper spacing -->
-                <div style="clear: both; height: 60px;"></div>
-            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('Setting up publication chart');
+                const canvas = document.getElementById('publication-chart');
+                if (!canvas) {
+                    console.error('Canvas element not found');
+                    return;
+                }
 
-            <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    console.log('Setting up publication chart');
-                    const canvas = document.getElementById('publication-chart');
-                    if (!canvas) {
-                        console.error('Canvas element not found');
-                        return;
-                    }
+                // Direct data embedding
+                const chartLabels = ["2023", "2024", "2025"];
+                const pubData = [6, 6, 2];
+                const citData = [104, 13, 0];
 
-                    // Direct data embedding
-                    const chartLabels = ["2023", "2024", "2025"];
-                    const pubData = [6, 6, 2];
-                    const citData = [104, 13, 0];
+                console.log('Chart data:', {
+                    labels: chartLabels,
+                    pubData: pubData,
+                    citData: citData
+                });
 
-                    console.log('Chart data:', {
-                        labels: chartLabels,
-                        pubData: pubData,
-                        citData: citData
-                    });
-
-                    try {
-                        const chart = new Chart(canvas, {
-                            type: 'bar',
-                            data: {
-                                labels: chartLabels,
-                                datasets: [{
-                                    label: 'Publications',
-                                    data: pubData,
-                                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                                    borderColor: 'rgba(54, 162, 235, 1)',
-                                    borderWidth: 1
-                                }, {
-                                    label: 'Citations',
-                                    data: citData,
-                                    yAxisID: 'y1',
-                                    type: 'line',
-                                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                                    borderColor: 'rgba(255, 99, 132, 1)',
-                                    borderWidth: 1
-                                }]
+                try {
+                    const chart = new Chart(canvas, {
+                        type: 'bar',
+                        data: {
+                            labels: chartLabels,
+                            datasets: [{
+                                label: 'Publications',
+                                data: pubData,
+                                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            }, {
+                                label: 'Citations',
+                                data: citData,
+                                yAxisID: 'y1',
+                                type: 'line',
+                                backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            layout: {
+                                padding: {
+                                    top: 10,
+                                    right: 10,
+                                    bottom: 30,
+                                    left: 10
+                                }
                             },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: true,
-                                layout: {
-                                    padding: {
-                                        top: 10,
-                                        right: 10,
-                                        bottom: 30,
-                                        left: 10
-                                    }
-                                },
-                                plugins: {
-                                    legend: {
-                                        position: 'top',
-                                        align: 'start',
-                                        labels: {
-                                            boxWidth: 15,
-                                            padding: 10,
-                                            font: {
-                                                size: 12
-                                            }
-                                        }
-                                    }
-                                },
-                                scales: {
-                                    y: {
-                                        beginAtZero: true,
-                                        title: {
-                                            display: true,
-                                            text: 'Publications'
-                                        }
-                                    },
-                                    y1: {
-                                        beginAtZero: true,
-                                        position: 'right',
-                                        title: {
-                                            display: true,
-                                            text: 'Citations'
-                                        },
-                                        grid: {
-                                            drawOnChartArea: false
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                    align: 'start',
+                                    labels: {
+                                        boxWidth: 15,
+                                        padding: 10,
+                                        font: {
+                                            size: 12
                                         }
                                     }
                                 }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Publications'
+                                    }
+                                },
+                                y1: {
+                                    beginAtZero: true,
+                                    position: 'right',
+                                    title: {
+                                        display: true,
+                                        text: 'Citations'
+                                    },
+                                    grid: {
+                                        drawOnChartArea: false
+                                    }
+                                }
                             }
-                        });
-                        console.log('Chart created successfully');
-                    } catch (error) {
-                        console.error('Error creating chart:', error);
-                    }
-                });
-            </script>
-            
+                        }
+                    });
+                    console.log('Chart created successfully');
+                } catch (error) {
+                    console.error('Error creating chart:', error);
+                }
+            });
+        </script>
+
+        <!-- Continuing with other scripts -->
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
         <script>
@@ -338,73 +405,6 @@
                 });
             });
         </script>
-        
-            <div class="card">
-                <h2 class="card-title">Top Publication Venues</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Journal</th>
-                            <th>Publications</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            
-                        <tr>
-                            <td>arXiv</td>
-                            <td>3</td>
-                        </tr>
-                
-                        <tr>
-                            <td>Mobilities</td>
-                            <td>1</td>
-                        </tr>
-                
-                        <tr>
-                            <td>Journal of The Royal Society Interface</td>
-                            <td>1</td>
-                        </tr>
-                
-                        <tr>
-                            <td>People and Nature</td>
-                            <td>1</td>
-                        </tr>
-                
-                        <tr>
-                            <td>BioData Mining</td>
-                            <td>1</td>
-                        </tr>
-                
-                        <tr>
-                            <td>Journal of Computational Social Science</td>
-                            <td>1</td>
-                        </tr>
-                
-                        <tr>
-                            <td>Physica A: Statistical Mechanics and Its Applications</td>
-                            <td>1</td>
-                        </tr>
-                
-                        <tr>
-                            <td>Physics Reports</td>
-                            <td>1</td>
-                        </tr>
-                
-                        <tr>
-                            <td>Msystems</td>
-                            <td>1</td>
-                        </tr>
-                
-                        <tr>
-                            <td>Physical Review Letters</td>
-                            <td>1</td>
-                        </tr>
-                
-                    </tbody>
-                </table>
-            </div>
-            
-        </div>
         
             <footer>
                 <p><small>Meren updated this on 2025-05-08</small></p>
