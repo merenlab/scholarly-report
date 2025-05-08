@@ -1032,6 +1032,12 @@ class HTMLGenerator:
         # Calculate statistics
         total_pubs = len(publications)
         total_citations = sum(int(p.get('citations', 0)) for p in publications)
+
+        # Determine the year range for the author
+        pub_years = [int(pub.get('year', 0)) for pub in publications if pub.get('year') and str(pub.get('year')).isdigit()]
+        min_year = min(pub_years) if pub_years else "N/A"
+        max_year = max(pub_years) if pub_years else "N/A"
+
         yearly_pubs = Counter()
         yearly_citations = Counter()
         journals = Counter()
@@ -1057,29 +1063,63 @@ class HTMLGenerator:
         # Sort co-authors by number of shared publications
         coauthors.sort(key=lambda x: x['publications'], reverse=True)
 
+        # Calculate the included-publications h-index (already doing this for the main table)
+        citation_counts = sorted([int(pub.get('citations', 0)) for pub in publications], reverse=True)
+        included_h_index = 0
+        for i, citations in enumerate(citation_counts):
+            if i+1 <= citations:
+                included_h_index = i+1
+            else:
+                break
+
+        # Calculate the included-publications i10-index
+        included_i10_index = sum(1 for citations in citation_counts if citations >= 10)
+
         # Generate the HTML
         html += f"""
         <div class="container">
             <div class="card">
                 <h2 class="card-title">{name}</h2>
-                <p>{author_data.get('affiliation', '')}</p>
+
+                <p>Overview of the selected period (between <b>{min_year}</b> to <b>{max_year}</b>):
 
                 <div class="author-stats">
                     <div class="stat-box">
                         <div class="stat-number">{total_pubs}</div>
-                        <div class="stat-label">Publications</div>
+                        <div class="stat-label">Publications<br/>(Selected Period)</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-number">{total_citations}</div>
-                        <div class="stat-label">Citations</div>
+                        <div class="stat-label">Citations<br/>(Selected Period)</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-number">{author_data.get('h_index', 0)}</div>
-                        <div class="stat-label">h-index</div>
+                        <div class="stat-number">{included_h_index}</div>
+                        <div class="stat-label">h-index<br/>(Selected Period)</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-number">{author_data.get('i10_index', 0)}</div>
-                        <div class="stat-label">i10-index</div>
+                        <div class="stat-number">{included_i10_index}</div>
+                        <div class="stat-label">i10-index<br/>(Selected Period)</div>
+                    </div>
+                </div>
+
+                <p>Lifetime overview:
+
+                <div class="author-stats">
+                    <div class="stat-box">
+                        <div class="stat-number">{author_data.get('publication_count', 'N/A')}</div>
+                        <div class="stat-label">Publications<br/>(Lifetime)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{author_data.get('total_citations', 'N/A')}</div>
+                        <div class="stat-label">Citations<br/>(Lifetime)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{author_data.get('h_index', 'N/A')}</div>
+                        <div class="stat-label">h-index<br/>(Lifetime)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{author_data.get('i10_index', 'N/A')}</div>
+                        <div class="stat-label">i10-index<br/>(Lifetime)</div>
                     </div>
                 </div>
 
@@ -1090,7 +1130,7 @@ class HTMLGenerator:
                 <h2 class="card-title">Publications</h2>
                 <p>Showing {total_pubs} publications sorted by year (newest first):</p>
 
-                <table>
+                <table id="publications-table" class="display">
                     <thead>
                         <tr>
                             <th>Year</th>
@@ -1106,12 +1146,16 @@ class HTMLGenerator:
             pub_url = pub.get('pub_url', '')
             title_with_link = f"<a href='{pub_url}' target='_blank'>{pub.get('title', 'Unknown Title')}</a>" if pub_url else pub.get('title', 'Unknown Title')
 
+            # Just to make sure year and citations values will always be numeric
+            year = pub.get('year', '')
+            citations = pub.get('citations', 0)
+
             html += f"""
                         <tr>
-                            <td>{pub.get('year', '')}</td>
+                            <td>{year}</td>
                             <td>{title_with_link}</td>
                             <td>{pub.get('journal', '')}</td>
-                            <td>{pub.get('citations', 0)}</td>
+                            <td>{citations}</td>
                         </tr>
             """
 
