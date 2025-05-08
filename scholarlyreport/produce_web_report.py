@@ -832,8 +832,14 @@ class HTMLGenerator:
         html += f"""
         <div class="container">
             <div class="card">
-                <h2 class="card-title">Overview</h2>
-                <p>Between <b>{min_year} and {max_year}</b>, a total of <b>{total_publications}</b> articles have been published in peer-reviewed journals or pre-print servers by <b>{total_authors}</b> authors that accumulated over <b>{total_citations}</b> citations.</p>
+                <h2 class="card-title">{self.institute_name} Overview</h2>
+                <p>Between the years <b>{min_year} and {max_year}</b>, the <b>{total_authors}</b> reserchers of the {self.institute_name} included in this dataset poblished a total of <b>{total_publications}</b> articles in <a href="./journals.html">peer-reviewed journals or pre-print servers</a> that accumulated over <b>{total_citations}</b> citations collectively.</p>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Co-Authorship Network</h2>
+                <p><small>You can click on a node to view more details about an author.</small></p>
+                <div id="network" class="network-container"></div>
             </div>
 
             <div class="card">
@@ -852,15 +858,6 @@ class HTMLGenerator:
                     <canvas id="citation-trends-chart"></canvas>
                 </div>
                 <div style="clear: both; height: 60px;"></div>
-            </div>
-
-            <div class="card">
-                <h2 class="card-title">Co-Authorship Network</h2>
-                <p>This network represents co-authorship relationships between researchers.
-                   Node size indicates number of publications, node color represents h-index,
-                   and edge thickness shows number of co-authored publications.</p>
-                <div id="network" class="network-container"></div>
-                <p><small>Click on a node to view more details about an author.</small></p>
             </div>
 
             <div class="card">
@@ -1137,13 +1134,17 @@ class HTMLGenerator:
         # Calculate the included-publications i10-index
         included_i10_index = sum(1 for citations in citation_counts if citations >= 10)
 
-        # Generate the HTML
+        # Start the HTML page
+        html += """<div class="container">"""
+
+        ###########################################################################
+        # Author stats card
+        ###########################################################################
         html += f"""
-        <div class="container">
             <div class="card">
                 <h2 class="card-title">{name}</h2>
 
-                <p>Overview of the selected period (between <b>{min_year}</b> to <b>{max_year}</b>):
+                <p>Overview of the period between <b>{min_year}</b> to <b>{max_year}</b>:
 
                 <div class="author-stats">
                     <div class="stat-box">
@@ -1187,7 +1188,97 @@ class HTMLGenerator:
 
                 <p><a href="https://scholar.google.com/citations?user={author_id}" target="_blank">View Google Scholar Profile</a></p>
             </div>
+            """
 
+        ###########################################################################
+        # Publication trends
+        ###########################################################################
+        years = sorted(yearly_pubs.keys())
+        if years:
+            # Create JSON-friendly data to embed directly
+            chart_years = list(map(str, years))
+            chart_pub_counts = [yearly_pubs[y] for y in years]
+            chart_citation_counts = [yearly_citations[y] for y in years]
+
+            html += f"""
+            <div class="card">
+                <h2 class="card-title">Publication Trends</h2>
+                <p>Trends for the period between <b>{min_year}</b> to <b>{max_year}</b>:
+                <div style="height: 400px; position: relative; margin-bottom: 90px; overflow: visible;">
+                    <canvas id="publication-chart"></canvas>
+                </div>
+                <!-- Add a clear div to force proper spacing -->
+                <div style="clear: both; height: 60px;"></div>
+            </div>
+            """
+
+
+        ###########################################################################
+        # Co-authors table
+        ###########################################################################
+        if coauthors:
+            html += f"""
+            <div class="card">
+                <h2 class="card-title">Co-Authors</h2>
+                <p>List of co-authors included in this analysis and the number of publications they shared with {name} between <b>{min_year}</b> to <b>{max_year}</b>:
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Shared Publications</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """
+
+            for coauthor in coauthors:
+                html += f"""
+                            <tr>
+                                <td><a href="{coauthor['id']}.html">{coauthor['name']}</a></td>
+                                <td>{coauthor['publications']}</td>
+                            </tr>
+                """
+
+            html += """
+                    </tbody>
+                </table>
+            </div>
+            """
+
+        # Top journals
+        if journals:
+            top_journals = journals.most_common(10)
+            html += """
+            <div class="card">
+                <h2 class="card-title">Top Publication Venues</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Journal</th>
+                            <th>Publications</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """
+
+            for journal, count in top_journals:
+                html += f"""
+                        <tr>
+                            <td>{journal}</td>
+                            <td>{count}</td>
+                        </tr>
+                """
+
+            html += """
+                    </tbody>
+                </table>
+            </div>
+            """
+
+        ###########################################################################
+        # Bigass publications Table
+        ###########################################################################
+        html += f"""
             <div class="card">
                 <h2 class="card-title">Publications</h2>
                 <p>Showing {total_pubs} publications sorted by year (newest first):</p>
@@ -1227,164 +1318,124 @@ class HTMLGenerator:
             </div>
         """
 
-        # Only show co-authors section if there are any
-        if coauthors:
-            html += """
-            <div class="card">
-                <h2 class="card-title">Co-Authors</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Shared Publications</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            """
+        ###########################################################################
+        # END OF PAGE
+        ###########################################################################
+        html += """</div>"""
 
-            for coauthor in coauthors:
-                html += f"""
-                            <tr>
-                                <td><a href="{coauthor['id']}.html">{coauthor['name']}</a></td>
-                                <td>{coauthor['publications']}</td>
-                            </tr>
-                """
+        ###########################################################################
+        # SCRIPTS
+        ###########################################################################
+        html += """
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('Setting up publication chart');
+                const canvas = document.getElementById('publication-chart');
+                if (!canvas) {
+                    console.error('Canvas element not found');
+                    return;
+                }
 
-            html += """
-                    </tbody>
-                </table>
-            </div>
-            """
+                // Direct data embedding
+                const chartLabels = """
 
-        # Publication trends
-        years = sorted(yearly_pubs.keys())
-        if years:
-            # Create JSON-friendly data to embed directly
-            chart_years = list(map(str, years))
-            chart_pub_counts = [yearly_pubs[y] for y in years]
-            chart_citation_counts = [yearly_citations[y] for y in years]
+        # Embed JSON data directly (EMBARRASSING, BUT VERY EFFECTIVE)
+        html += json.dumps(chart_years)
 
-            html += """
-            <div class="card">
-                <h2 class="card-title">Publication Trends</h2>
-                <div style="height: 400px; position: relative; margin-bottom: 90px; overflow: visible;">
-                    <canvas id="publication-chart"></canvas>
-                </div>
-                <!-- Add a clear div to force proper spacing -->
-                <div style="clear: both; height: 60px;"></div>
-            </div>
+        html += """;
+                const pubData = """
 
-            <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    console.log('Setting up publication chart');
-                    const canvas = document.getElementById('publication-chart');
-                    if (!canvas) {
-                        console.error('Canvas element not found');
-                        return;
-                    }
+        html += json.dumps(chart_pub_counts)
 
-                    // Direct data embedding
-                    const chartLabels = """
+        html += """;
+                const citData = """
 
-            # Embed JSON data directly
-            html += json.dumps(chart_years)
+        html += json.dumps(chart_citation_counts)
 
-            html += """;
-                    const pubData = """
+        html += """;
 
-            html += json.dumps(chart_pub_counts)
+                console.log('Chart data:', {
+                    labels: chartLabels,
+                    pubData: pubData,
+                    citData: citData
+                });
 
-            html += """;
-                    const citData = """
-
-            html += json.dumps(chart_citation_counts)
-
-            html += """;
-
-                    console.log('Chart data:', {
-                        labels: chartLabels,
-                        pubData: pubData,
-                        citData: citData
-                    });
-
-                    try {
-                        const chart = new Chart(canvas, {
-                            type: 'bar',
-                            data: {
-                                labels: chartLabels,
-                                datasets: [{
-                                    label: 'Publications',
-                                    data: pubData,
-                                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                                    borderColor: 'rgba(54, 162, 235, 1)',
-                                    borderWidth: 1
-                                }, {
-                                    label: 'Citations',
-                                    data: citData,
-                                    yAxisID: 'y1',
-                                    type: 'line',
-                                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                                    borderColor: 'rgba(255, 99, 132, 1)',
-                                    borderWidth: 1
-                                }]
+                try {
+                    const chart = new Chart(canvas, {
+                        type: 'bar',
+                        data: {
+                            labels: chartLabels,
+                            datasets: [{
+                                label: 'Publications',
+                                data: pubData,
+                                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            }, {
+                                label: 'Citations',
+                                data: citData,
+                                yAxisID: 'y1',
+                                type: 'line',
+                                backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            layout: {
+                                padding: {
+                                    top: 10,
+                                    right: 10,
+                                    bottom: 30,
+                                    left: 10
+                                }
                             },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: true,
-                                layout: {
-                                    padding: {
-                                        top: 10,
-                                        right: 10,
-                                        bottom: 30,
-                                        left: 10
-                                    }
-                                },
-                                plugins: {
-                                    legend: {
-                                        position: 'top',
-                                        align: 'start',
-                                        labels: {
-                                            boxWidth: 15,
-                                            padding: 10,
-                                            font: {
-                                                size: 12
-                                            }
-                                        }
-                                    }
-                                },
-                                scales: {
-                                    y: {
-                                        beginAtZero: true,
-                                        title: {
-                                            display: true,
-                                            text: 'Publications'
-                                        }
-                                    },
-                                    y1: {
-                                        beginAtZero: true,
-                                        position: 'right',
-                                        title: {
-                                            display: true,
-                                            text: 'Citations'
-                                        },
-                                        grid: {
-                                            drawOnChartArea: false
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                    align: 'start',
+                                    labels: {
+                                        boxWidth: 15,
+                                        padding: 10,
+                                        font: {
+                                            size: 12
                                         }
                                     }
                                 }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Publications'
+                                    }
+                                },
+                                y1: {
+                                    beginAtZero: true,
+                                    position: 'right',
+                                    title: {
+                                        display: true,
+                                        text: 'Citations'
+                                    },
+                                    grid: {
+                                        drawOnChartArea: false
+                                    }
+                                }
                             }
-                        });
-                        console.log('Chart created successfully');
-                    } catch (error) {
-                        console.error('Error creating chart:', error);
-                    }
-                });
-            </script>
-            """
+                        }
+                    });
+                    console.log('Chart created successfully');
+                } catch (error) {
+                    console.error('Error creating chart:', error);
+                }
+            });
+        </script>
 
-        # Include the necessary scirpts.
-        html += """
+        <!-- Continuing with other scripts -->
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
         <script>
@@ -1403,39 +1454,6 @@ class HTMLGenerator:
         </script>
         """
 
-        # Top journals
-        if journals:
-            top_journals = journals.most_common(10)
-            html += """
-            <div class="card">
-                <h2 class="card-title">Top Publication Venues</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Journal</th>
-                            <th>Publications</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            """
-
-            for journal, count in top_journals:
-                html += f"""
-                        <tr>
-                            <td>{journal}</td>
-                            <td>{count}</td>
-                        </tr>
-                """
-
-            html += """
-                    </tbody>
-                </table>
-            </div>
-            """
-
-        html += """
-        </div>
-        """
 
         html += self._page_footer()
 
