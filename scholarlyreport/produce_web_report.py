@@ -88,11 +88,29 @@ class PublicationData:
         if hasattr(self, 'journal_mapping') and journal_name in self.journal_mapping:
             return self.journal_mapping[journal_name]
 
-        # Title case the journal name (capitalize first letter of each word)
-        standardized = " ".join(word.capitalize() for word in journal_name.split())
+        # Split into words
+        words = journal_name.split()
+        standardized_words = []
 
-        # prettier
-        standardized = standardized.replace('And', 'and').replace('Of', 'of')
+        for word in words:
+            # Skip empty words
+            if not word:
+                continue
+
+            # Check if word has mixed case (e.g., "arXiv")
+            has_mixed_case = any(c.isupper() for c in word[1:])
+
+            if has_mixed_case:
+                # Keep words with internal capitals as they are
+                standardized_words.append(word)
+            else:
+                # Capitalize only if it's all lowercase or all uppercase
+                standardized_words.append(word.capitalize())
+
+        standardized = " ".join(standardized_words)
+
+        # Now make it prettier
+        standardized = standardized.replace(' And ', ' and ').replace(' Of ', ' of ').replace(' In ', ' in ')
 
         # Store in mapping for future use
         if not hasattr(self, 'journal_mapping'):
