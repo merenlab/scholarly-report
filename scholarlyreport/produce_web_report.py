@@ -341,6 +341,12 @@ class HTMLGenerator:
             background-color: #f8f9fa;
         }
 
+        a:link,
+        a:visited {
+          color: #3b5aff; /* or specify an exact color */
+          text-decoration: inherit; /* optional if you want same underline style */
+        }
+
         .container {
             width: 90%;
             max-width: 1200px;
