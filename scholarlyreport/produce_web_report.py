@@ -1365,8 +1365,8 @@ class HTMLGenerator:
 
             <nav>
                 <ul>
-                    <li><a href="{prefix}/index.html">Overview</a></li>
-                    <li><a href="{prefix}/journals.html">Journals</a></li>
+                    <li><a href="{prefix}/index.html">Publications Overview</a></li>
+                    <li><a href="{prefix}/journals.html">Journals Overview</a></li>
                 </ul>
             </nav>
         """
