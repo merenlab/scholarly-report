@@ -788,12 +788,12 @@ class HTMLGenerator:
                     <thead>
                         <tr>
                             <th>Name</th>
-                            <th>Affiliation</th>
-                            <th>Publications</th>
-                            <th>Citations ({min_year}-{max_year})</th>
-                            <th>h-index ({min_year}-{max_year})</th>
-                            <th>Citations (Lifetime)</th>
-                            <th>h-index (Lifetime)</th>
+                            <th style="text-align: center;">Publications<br/>({min_year}-{max_year})</th>
+                            <th style="text-align: center;">Citations<br/>({min_year}-{max_year})</th>
+                            <th style="text-align: center;">Avg. Citations<br/>({min_year}-{max_year})</th>
+                            <th style="text-align: center;">h-index<br/>({min_year}-{max_year})</th>
+                            <th style="text-align: center;">Citations<br/>(Lifetime)</th>
+                            <th style="text-align: center;">h-index<br/>(Lifetime)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -811,12 +811,12 @@ class HTMLGenerator:
             html += f"""
                         <tr>
                             <td><a href="authors/{author_id}.html">{author.get('name', 'Unknown')}</a></td>
-                            <td>{author.get('affiliation', '')}</td>
-                            <td>{stats['pub_count']}</td>
-                            <td>{stats['included_citations']}</td>
-                            <td>{stats['included_h_index']}</td>
-                            <td>{stats['lifetime_citations']}</td>
-                            <td>{stats['lifetime_h_index']}</td>
+                            <td style="text-align: center;">{stats['pub_count']}</td>
+                            <td style="text-align: center;">{stats['included_citations']}</td>
+                            <td style="text-align: center;">{stats['included_citations'] / stats['pub_count']:.1f}</td>
+                            <td style="text-align: center;">{stats['included_h_index']}</td>
+                            <td style="text-align: center;">{stats['lifetime_citations']}</td>
+                            <td style="text-align: center;">{stats['lifetime_h_index']}</td>
                         </tr>
             """
 
