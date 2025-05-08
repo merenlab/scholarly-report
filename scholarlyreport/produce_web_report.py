@@ -367,7 +367,7 @@ class HTMLGenerator:
         }
 
         nav {
-            background-color: #343a40;
+            background-color: #dbdbdb;
             padding: 10px 0;
         }
 
