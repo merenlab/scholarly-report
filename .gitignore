@@ -1,0 +1,11 @@
+# packaging materials
+*.egg-info/
+dist/
+build/
+*.egg
+*.whl
+
+# bytecode fun
+__pycache__/
+*.py[cod]
+*$py.class
