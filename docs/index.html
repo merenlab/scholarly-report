@@ -1,1 +1,314 @@
-hi
+<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Scholarly Data Visualization</title>
+            <link rel="stylesheet" href="./css/style.css">
+            <!-- Add debug console output -->
+            <script>
+                console.log("Page loaded: Scholarly Data Visualization");
+                console.log("Active page: index");
+                console.log("Using prefix: .");
+            </script>
+        </head>
+        <body>
+            <header>
+                <h1>Scholarly Data For Scientists at the ICBM</h1>
+            </header>
+
+            <nav>
+                <ul>
+                    <li><a href="./index.html">Publications Overview</a></li>
+                    <li><a href="./journals.html">Journals Overview</a></li>
+                </ul>
+            </nav>
+        
+        <div class="container">
+            <div class="card">
+                <h2 class="card-title">Overview</h2>
+                <p>Between <b>2023 and 2025</b>, a total of <b>193</b> articles have been published in peer-reviewed journals or pre-print servers by <b>12</b> authors that accumulated over <b>1354</b> citations.</p>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Total number of publications per year</h2>
+                <p>This chart includes publications authored by the 12 authors at the ICBM.
+                <div style="height: 450px; position: relative; margin-bottom: 60px;">
+                    <canvas id="yearly-publications-chart"></canvas>
+                </div>
+                <div style="clear: both; height: 60px;"></div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Citation Trends</h2>
+                <p>The total number of citations accumulated over the years by work published between 2023 and 2025 by the 12 authors included in this report.
+                <div style="height: 450px; position: relative; margin-bottom: 60px;">
+                    <canvas id="citation-trends-chart"></canvas>
+                </div>
+                <div style="clear: both; height: 60px;"></div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Co-Authorship Network</h2>
+                <p>This network represents co-authorship relationships between researchers.
+                   Node size indicates number of publications, node color represents h-index,
+                   and edge thickness shows number of co-authored publications.</p>
+                <div id="network" class="network-container"></div>
+                <p><small>Click on a node to view more details about an author.</small></p>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Researchers from the ICBM included in this report</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th style="text-align: center;">Publications<br/>(2023-2025)</th>
+                            <th style="text-align: center;">Citations<br/>(2023-2025)</th>
+                            <th style="text-align: center;">Avg. Citations<br/>(2023-2025)</th>
+                            <th style="text-align: center;">h-index<br/>(2023-2025)</th>
+                            <th style="text-align: center;">Citations<br/>(Lifetime)</th>
+                            <th style="text-align: center;">h-index<br/>(Lifetime)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        
+                        <tr>
+                            <td><a href="authors/bxXw-JUAAAAJ.html">Helmut Hillebrand</a></td>
+                            <td style="text-align: center;">21</td>
+                            <td style="text-align: center;">108</td>
+                            <td style="text-align: center;">5.1</td>
+                            <td style="text-align: center;">5</td>
+                            <td style="text-align: center;">43707</td>
+                            <td style="text-align: center;">92</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/UmlxKj4AAAAJ.html">Thorsten Dittmar</a></td>
+                            <td style="text-align: center;">54</td>
+                            <td style="text-align: center;">503</td>
+                            <td style="text-align: center;">9.3</td>
+                            <td style="text-align: center;">12</td>
+                            <td style="text-align: center;">38837</td>
+                            <td style="text-align: center;">91</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/GtLLuxoAAAAJ.html">A Murat Eren</a></td>
+                            <td style="text-align: center;">26</td>
+                            <td style="text-align: center;">314</td>
+                            <td style="text-align: center;">12.1</td>
+                            <td style="text-align: center;">10</td>
+                            <td style="text-align: center;">16438</td>
+                            <td style="text-align: center;">59</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/hDRCDJwAAAAJ.html">Bernd Blasius</a></td>
+                            <td style="text-align: center;">5</td>
+                            <td style="text-align: center;">10</td>
+                            <td style="text-align: center;">2.0</td>
+                            <td style="text-align: center;">3</td>
+                            <td style="text-align: center;">15499</td>
+                            <td style="text-align: center;">48</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/2bC6aPsAAAAJ.html">Martin Koenneke</a></td>
+                            <td style="text-align: center;">3</td>
+                            <td style="text-align: center;">11</td>
+                            <td style="text-align: center;">3.7</td>
+                            <td style="text-align: center;">1</td>
+                            <td style="text-align: center;">10225</td>
+                            <td style="text-align: center;">35</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/eogyTQUAAAAJ.html">Thilo Gross</a></td>
+                            <td style="text-align: center;">14</td>
+                            <td style="text-align: center;">117</td>
+                            <td style="text-align: center;">8.4</td>
+                            <td style="text-align: center;">4</td>
+                            <td style="text-align: center;">9406</td>
+                            <td style="text-align: center;">44</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/3ioz2B4AAAAJ.html">Peter Schupp</a></td>
+                            <td style="text-align: center;">20</td>
+                            <td style="text-align: center;">65</td>
+                            <td style="text-align: center;">3.2</td>
+                            <td style="text-align: center;">5</td>
+                            <td style="text-align: center;">8371</td>
+                            <td style="text-align: center;">51</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/KenJWYwAAAAJ.html">Iliana Baums</a></td>
+                            <td style="text-align: center;">20</td>
+                            <td style="text-align: center;">62</td>
+                            <td style="text-align: center;">3.1</td>
+                            <td style="text-align: center;">5</td>
+                            <td style="text-align: center;">7920</td>
+                            <td style="text-align: center;">51</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/SRJug_AAAAAJ.html">Kimberley Peters</a></td>
+                            <td style="text-align: center;">23</td>
+                            <td style="text-align: center;">83</td>
+                            <td style="text-align: center;">3.6</td>
+                            <td style="text-align: center;">4</td>
+                            <td style="text-align: center;">3520</td>
+                            <td style="text-align: center;">29</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/UJoAfkIAAAAJ.html">Michael Seidel</a></td>
+                            <td style="text-align: center;">10</td>
+                            <td style="text-align: center;">32</td>
+                            <td style="text-align: center;">3.2</td>
+                            <td style="text-align: center;">4</td>
+                            <td style="text-align: center;">3408</td>
+                            <td style="text-align: center;">29</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/83LAYbIAAAAJ.html">Maren Striebel</a></td>
+                            <td style="text-align: center;">19</td>
+                            <td style="text-align: center;">126</td>
+                            <td style="text-align: center;">6.6</td>
+                            <td style="text-align: center;">5</td>
+                            <td style="text-align: center;">3181</td>
+                            <td style="text-align: center;">29</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/atQ-4b8AAAAJ.html">Sinikka T Lennartz</a></td>
+                            <td style="text-align: center;">7</td>
+                            <td style="text-align: center;">179</td>
+                            <td style="text-align: center;">25.6</td>
+                            <td style="text-align: center;">3</td>
+                            <td style="text-align: center;">1662</td>
+                            <td style="text-align: center;">19</td>
+                        </tr>
+            
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+        <script src="js/network.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Embed data directly in JavaScript instead of fetching
+                const networkData = {"nodes": [{"id": "hDRCDJwAAAAJ", "name": "Bernd Blasius", "publications": 5, "citations": 15499, "h_index": 48}, {"id": "bxXw-JUAAAAJ", "name": "Helmut Hillebrand", "publications": 21, "citations": 43707, "h_index": 92}, {"id": "eogyTQUAAAAJ", "name": "Thilo Gross", "publications": 14, "citations": 9406, "h_index": 44}, {"id": "atQ-4b8AAAAJ", "name": "Sinikka T Lennartz", "publications": 7, "citations": 1662, "h_index": 19}, {"id": "SRJug_AAAAAJ", "name": "Kimberley Peters", "publications": 23, "citations": 3520, "h_index": 29}, {"id": "KenJWYwAAAAJ", "name": "Iliana Baums", "publications": 20, "citations": 7920, "h_index": 51}, {"id": "2bC6aPsAAAAJ", "name": "Martin Koenneke", "publications": 3, "citations": 10225, "h_index": 35}, {"id": "UmlxKj4AAAAJ", "name": "Thorsten Dittmar", "publications": 54, "citations": 38837, "h_index": 91}, {"id": "3ioz2B4AAAAJ", "name": "Peter Schupp", "publications": 20, "citations": 8371, "h_index": 51}, {"id": "GtLLuxoAAAAJ", "name": "A Murat Eren", "publications": 26, "citations": 16438, "h_index": 59}, {"id": "UJoAfkIAAAAJ", "name": "Michael Seidel", "publications": 10, "citations": 3408, "h_index": 29}, {"id": "83LAYbIAAAAJ", "name": "Maren Striebel", "publications": 19, "citations": 3181, "h_index": 29}], "links": [{"source": "hDRCDJwAAAAJ", "target": "atQ-4b8AAAAJ", "weight": 1, "publications": ["2024_mechanisms_underpinning_the_net_removal_rates_of_d"]}, {"source": "hDRCDJwAAAAJ", "target": "UmlxKj4AAAAJ", "weight": 2, "publications": ["2024_mechanisms_underpinning_the_net_removal_rates_of_d", "2025_network_flow_methods_for_nmrbased_compound_identif"]}, {"source": "bxXw-JUAAAAJ", "target": "SRJug_AAAAAJ", "weight": 1, "publications": ["2023_making_the_un_ocean_decade_work_the_potential_for_"]}, {"source": "bxXw-JUAAAAJ", "target": "eogyTQUAAAAJ", "weight": 2, "publications": ["2024_sustainability_we_need_to_focus_on_overall_system_", "2023_dissimilarity_analysis_based_on_diffusion_maps"]}, {"source": "bxXw-JUAAAAJ", "target": "83LAYbIAAAAJ", "weight": 8, "publications": ["2023_marine_primary_producers_in_a_darker_future_a_meta", "2025_stoichlife_a_global_dataset_of_plant_and_animal_el", "2025_partitioning_species_contributions_to_ecological_s", "2024_species_richness_and_intraspecific_variation_inter", "2024_direct_and_indirect_cumulative_effects_of_temperat", "2025_temperaturedependent_responses_to_light_and_nutrie", "2025_quantifying_the_net_effect_of_biodiversity_on_stab", "2024_body_size_is_a_better_predictor_of_intrathan_inter"]}, {"source": "eogyTQUAAAAJ", "target": "SRJug_AAAAAJ", "weight": 1, "publications": ["2025_disrupted_immobilities_giving_space_and_time_to_th"]}, {"source": "atQ-4b8AAAAJ", "target": "UmlxKj4AAAAJ", "weight": 2, "publications": ["2024_reasons_behind_the_longterm_stability_of_dissolved", "2024_mechanisms_underpinning_the_net_removal_rates_of_d"]}, {"source": "UmlxKj4AAAAJ", "target": "83LAYbIAAAAJ", "weight": 1, "publications": ["2023_naturally_induced_biphasic_phytoplankton_spring_bl"]}, {"source": "UmlxKj4AAAAJ", "target": "UJoAfkIAAAAJ", "weight": 9, "publications": ["2024_outwelling_of_reduced_porewater_drives_the_biogeoc", "2023_complex_dissolved_organic_matter_dom_on_the_roof_o", "2023_landuse_changes_in_amazon_and_atlantic_rainforests", "2024_rivers_and_tidal_flats_as_sources_of_dissolved_org", "2023_groundwater_springs_in_the_german_wadden_sea_tidal", "2025_mercury_concentrations_along_the_amazon_estuary_an", "2025_the_amazonian_mangrove_systems_accumulate_and_rele", "2024_rapid_downslope_transport_of_fresh_dissolved_organ", "2024_the_influence_of_mangrove_forests_on_estuarine_dyn"]}]};
+                createNetwork(networkData, 'network');
+
+                // Publications per year chart
+                const pubYears = ["2023", "2024", "2025"];
+                const pubCounts = [77, 76, 40];
+
+                const pubChart = new Chart(
+                    document.getElementById('yearly-publications-chart'),
+                    {
+                        type: 'bar',
+                        data: {
+                            labels: pubYears,
+                            datasets: [{
+                                label: 'Publications',
+                                data: pubCounts,
+                                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Number of Publications by Year'
+                                },
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Publication Count'
+                                    }
+                                },
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Year'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                );
+
+                // Cumulative citation trends
+                const citYears = ["2023", "2024", "2025"];
+                const cumCitations = [852, 1330, 1354];
+
+                const citChart = new Chart(
+                    document.getElementById('citation-trends-chart'),
+                    {
+                        type: 'line',
+                        data: {
+                            labels: citYears,
+                            datasets: [{
+                                label: 'Cumulative Citations',
+                                data: cumCitations,
+                                fill: true,
+                                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                borderWidth: 2,
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Cumulative Citations Over Time'
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Total Citations'
+                                    }
+                                },
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Year'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                );
+            });
+        </script>
+        
+            <footer>
+                <p><small>Meren updated this on 2025-05-08</small></p>
+            </footer>
+        </body>
+        </html>
+        
