@@ -1,3 +1,7 @@
+# this file is not necessary, but I'm keeping it here in case
+# some people find it easier to set up a development
+# within a conda environment and simply wish to pip install
+# all the dependencies without installing the package.
 selenium>=4.1.0
 webdriver-manager>=3.8.0
 pandas>=1.3.0
