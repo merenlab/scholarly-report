@@ -5,6 +5,9 @@
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Sinikka T Lennartz - Scholar Profile</title>
             <link rel="stylesheet" href="../css/style.css">
+            <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
             <!-- Add debug console output -->
             <script>
                 console.log("Page loaded: Sinikka T Lennartz - Scholar Profile");
@@ -27,24 +30,46 @@
         <div class="container">
             <div class="card">
                 <h2 class="card-title">Sinikka T Lennartz</h2>
-                <p>ICBM Uni Oldenburg</p>
+
+                <p>Overview of the selected period (between <b>2023</b> to <b>2024</b>):
 
                 <div class="author-stats">
                     <div class="stat-box">
                         <div class="stat-number">7</div>
-                        <div class="stat-label">Publications</div>
+                        <div class="stat-label">Publications<br/>(Selected Period)</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-number">179</div>
-                        <div class="stat-label">Citations</div>
+                        <div class="stat-label">Citations<br/>(Selected Period)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">3</div>
+                        <div class="stat-label">h-index<br/>(Selected Period)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">2</div>
+                        <div class="stat-label">i10-index<br/>(Selected Period)</div>
+                    </div>
+                </div>
+
+                <p>Lifetime overview:
+
+                <div class="author-stats">
+                    <div class="stat-box">
+                        <div class="stat-number">14</div>
+                        <div class="stat-label">Publications<br/>(Lifetime)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">1662</div>
+                        <div class="stat-label">Citations<br/>(Lifetime)</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-number">19</div>
-                        <div class="stat-label">h-index</div>
+                        <div class="stat-label">h-index<br/>(Lifetime)</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-number">25</div>
-                        <div class="stat-label">i10-index</div>
+                        <div class="stat-label">i10-index<br/>(Lifetime)</div>
                     </div>
                 </div>
 
@@ -55,7 +80,7 @@
                 <h2 class="card-title">Publications</h2>
                 <p>Showing 7 publications sorted by year (newest first):</p>
 
-                <table>
+                <table id="publications-table" class="display">
                     <thead>
                         <tr>
                             <th>Year</th>
@@ -248,6 +273,23 @@
                 });
             </script>
             
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                $('#publications-table').DataTable({
+                    "paging": false,
+                    "info": false,
+                    "order": [[0, 'desc'], [3, 'desc']], // Default sort by year desc, then citations desc
+                    "columnDefs": [
+                        { "type": "html", "targets": 1 }, // For proper sorting of title column with links
+                        { "type": "num", "targets": [0, 3] } // Numeric sorting for year and citations
+                    ],
+                    "autoWidth": false
+                });
+            });
+        </script>
+        
             <div class="card">
                 <h2 class="card-title">Top Publication Venues</h2>
                 <table>

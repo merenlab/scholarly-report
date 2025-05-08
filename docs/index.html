@@ -5,6 +5,9 @@
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Scholarly Data Visualization</title>
             <link rel="stylesheet" href="./css/style.css">
+            <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
             <!-- Add debug console output -->
             <script>
                 console.log("Page loaded: Scholarly Data Visualization");
@@ -59,7 +62,7 @@
 
             <div class="card">
                 <h2 class="card-title">Researchers from the ICBM included in this report</h2>
-                <table>
+                <table id="researchers-table" class="display">
                     <thead>
                         <tr>
                             <th>Name</th>
@@ -73,16 +76,6 @@
                     </thead>
                     <tbody>
         
-                        <tr>
-                            <td><a href="authors/bxXw-JUAAAAJ.html">Helmut Hillebrand</a></td>
-                            <td style="text-align: center;">21</td>
-                            <td style="text-align: center;">108</td>
-                            <td style="text-align: center;">5.1</td>
-                            <td style="text-align: center;">5</td>
-                            <td style="text-align: center;">43707</td>
-                            <td style="text-align: center;">92</td>
-                        </tr>
-            
                         <tr>
                             <td><a href="authors/UmlxKj4AAAAJ.html">Thorsten Dittmar</a></td>
                             <td style="text-align: center;">54</td>
@@ -104,23 +97,13 @@
                         </tr>
             
                         <tr>
-                            <td><a href="authors/hDRCDJwAAAAJ.html">Bernd Blasius</a></td>
-                            <td style="text-align: center;">5</td>
-                            <td style="text-align: center;">10</td>
-                            <td style="text-align: center;">2.0</td>
+                            <td><a href="authors/atQ-4b8AAAAJ.html">Sinikka T Lennartz</a></td>
+                            <td style="text-align: center;">7</td>
+                            <td style="text-align: center;">179</td>
+                            <td style="text-align: center;">25.6</td>
                             <td style="text-align: center;">3</td>
-                            <td style="text-align: center;">15499</td>
-                            <td style="text-align: center;">48</td>
-                        </tr>
-            
-                        <tr>
-                            <td><a href="authors/2bC6aPsAAAAJ.html">Martin Koenneke</a></td>
-                            <td style="text-align: center;">3</td>
-                            <td style="text-align: center;">11</td>
-                            <td style="text-align: center;">3.7</td>
-                            <td style="text-align: center;">1</td>
-                            <td style="text-align: center;">10225</td>
-                            <td style="text-align: center;">35</td>
+                            <td style="text-align: center;">1662</td>
+                            <td style="text-align: center;">19</td>
                         </tr>
             
                         <tr>
@@ -134,13 +117,13 @@
                         </tr>
             
                         <tr>
-                            <td><a href="authors/3ioz2B4AAAAJ.html">Peter Schupp</a></td>
-                            <td style="text-align: center;">20</td>
-                            <td style="text-align: center;">65</td>
-                            <td style="text-align: center;">3.2</td>
+                            <td><a href="authors/bxXw-JUAAAAJ.html">Helmut Hillebrand</a></td>
+                            <td style="text-align: center;">21</td>
+                            <td style="text-align: center;">108</td>
+                            <td style="text-align: center;">5.1</td>
                             <td style="text-align: center;">5</td>
-                            <td style="text-align: center;">8371</td>
-                            <td style="text-align: center;">51</td>
+                            <td style="text-align: center;">43707</td>
+                            <td style="text-align: center;">92</td>
                         </tr>
             
                         <tr>
@@ -151,6 +134,36 @@
                             <td style="text-align: center;">5</td>
                             <td style="text-align: center;">7920</td>
                             <td style="text-align: center;">51</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/mim-jzwAAAAJ.html">Sarahi L Garcia</a></td>
+                            <td style="text-align: center;">12</td>
+                            <td style="text-align: center;">140</td>
+                            <td style="text-align: center;">11.7</td>
+                            <td style="text-align: center;">4</td>
+                            <td style="text-align: center;">2060</td>
+                            <td style="text-align: center;">19</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/3ioz2B4AAAAJ.html">Peter Schupp</a></td>
+                            <td style="text-align: center;">20</td>
+                            <td style="text-align: center;">65</td>
+                            <td style="text-align: center;">3.2</td>
+                            <td style="text-align: center;">5</td>
+                            <td style="text-align: center;">8371</td>
+                            <td style="text-align: center;">51</td>
+                        </tr>
+            
+                        <tr>
+                            <td><a href="authors/2bC6aPsAAAAJ.html">Martin Koenneke</a></td>
+                            <td style="text-align: center;">3</td>
+                            <td style="text-align: center;">11</td>
+                            <td style="text-align: center;">3.7</td>
+                            <td style="text-align: center;">1</td>
+                            <td style="text-align: center;">10225</td>
+                            <td style="text-align: center;">35</td>
                         </tr>
             
                         <tr>
@@ -184,23 +197,13 @@
                         </tr>
             
                         <tr>
-                            <td><a href="authors/mim-jzwAAAAJ.html">Sarahi L Garcia</a></td>
-                            <td style="text-align: center;">12</td>
-                            <td style="text-align: center;">140</td>
-                            <td style="text-align: center;">11.7</td>
-                            <td style="text-align: center;">4</td>
-                            <td style="text-align: center;">2060</td>
-                            <td style="text-align: center;">19</td>
-                        </tr>
-            
-                        <tr>
-                            <td><a href="authors/atQ-4b8AAAAJ.html">Sinikka T Lennartz</a></td>
-                            <td style="text-align: center;">7</td>
-                            <td style="text-align: center;">179</td>
-                            <td style="text-align: center;">25.6</td>
+                            <td><a href="authors/hDRCDJwAAAAJ.html">Bernd Blasius</a></td>
+                            <td style="text-align: center;">5</td>
+                            <td style="text-align: center;">10</td>
+                            <td style="text-align: center;">2.0</td>
                             <td style="text-align: center;">3</td>
-                            <td style="text-align: center;">1662</td>
-                            <td style="text-align: center;">19</td>
+                            <td style="text-align: center;">15499</td>
+                            <td style="text-align: center;">48</td>
                         </tr>
             
                     </tbody>
@@ -314,6 +317,19 @@
                     }
                 );
             });
+
+            // Initialize the researchers table with DataTables so we can sort things
+            $('#researchers-table').DataTable({
+                "paging": false,
+                "info": false,
+                "order": [],  // No initial sorting (keeps the random order)
+                "columnDefs": [
+                    { "type": "html", "targets": 0 }  // For proper sorting of name column with links
+                ],
+                "autoWidth": false,  // Prevent automatic width calculation
+                "scrollX": true      // Add horizontal scrolling if needed
+            });
+
         </script>
         
             <footer>
