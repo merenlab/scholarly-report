@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+
+import sys
+
+from scholarlyreport.get_author_data import main
+
+if __name__ == "__main__":
+    sys.exit(main())
