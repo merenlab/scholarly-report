@@ -27,7 +27,7 @@ Get those only appeared after a certain year:
 ```bash
 # retrieve information for publications appeared in literature after 2023
 python get-author-data GtLLuxoAAAAJ \
-                       --max-year 2021 \
+                       --min-year 2023 \
                        --output-dir SCHOLARLY_DATA
 ```
 
