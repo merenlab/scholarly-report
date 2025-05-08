@@ -166,7 +166,21 @@ sc-produce-web-report SCHOLARLY_DATA \
                       --output-dir SCHOLARLY_REPORT \
                       --exclude-journals JOURNAL-NAMES-TO-EXCLUDE.txt \
                       --institute-name ICBM
+```
 
+Your web page is ready :) Read below to figure out how to view it.
+
+### Upload it to a remote server
+
+The resulting directory is a self-contained web page. If you have a web page, you can upload the content to your web server directly, and visit the relevant URL. When you do that, you will see an interactive web page like this one here:
+
+[https://merenlab.github.io/scholarly-report/](https://merenlab.github.io/scholarly-report/)
+
+### View it locally
+
+Alternatively, you can run a mini Python web server in your output directory to visualize the contents of it using your browser. For that you can run the following commands:
+
+```bash
 # go into the output directory
 cd SCHOLARLY_REPORT
 
@@ -174,9 +188,7 @@ cd SCHOLARLY_REPORT
 python -m http.server 8000
 ```
 
-Here are some screenshots after visiting [http://localhost:8000/](http://localhost:8000/) on my computer:
-
-Some quick overview information:
+Now you can open your browser, and visit the URL [http://localhost:8000/](http://localhost:8000/) on your own computer, and you should see the following sections:
 
 ![image](https://github.com/user-attachments/assets/eb3c1fab-635b-4b0f-a06c-ca9f970b000f)
 
