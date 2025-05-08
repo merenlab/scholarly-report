@@ -23,7 +23,8 @@ from selenium.webdriver.support import expected_conditions as EC
 # be done :(
 journal_mapping = {'arxiv': 'arXiv',
                    'biorxiv': 'bioRxiv',
-                   'medrxiv': 'medRxiv'}
+                   'medrxiv': 'medRxiv',
+                   'g3': 'G3: Genes, Genomes, Genetics'}
 
 class JournalParser:
     """Handles parsing and cleaning of journal information from Google Scholar"""
