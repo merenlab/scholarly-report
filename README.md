@@ -124,7 +124,7 @@ And then visiting this URL on your web browser:
 Here is an example run (that is fully reproducible) and the resulting output I generated for 5 scientists at the ICBM just as an example:
 
 ```bash
-GOOGLE_SCHOLAR_IDS="GtLLuxoAAAAJ bxXw-JUAAAAJ 83LAYbIAAAAJ atQ-4b8AAAAJ UmlxKj4AAAAJ"
+GOOGLE_SCHOLAR_IDS="2bC6aPsAAAAJ 3ioz2B4AAAAJ 83LAYbIAAAAJ atQ-4b8AAAAJ bxXw-JUAAAAJ eogyTQUAAAAJ GtLLuxoAAAAJ hDRCDJwAAAAJ KenJWYwAAAAJ SRJug_AAAAAJ UJoAfkIAAAAJ UmlxKj4AAAAJ"
 
 # populate the contents of SCHOLARY DATA directory
 # for each Google Scholar profiles
@@ -149,6 +149,16 @@ US Patent
 Conference Abstracts
 Natur Und Recht
 Oekom
+Cordap
+Society+ Space
+Congresso
+Conference Series
+Agu
+Gfz Data Services
+Goldschmidt
+Egu25
+Faktencheck Artenvielfalt
+OSF
 EOF
 
 # Generate a report directory
