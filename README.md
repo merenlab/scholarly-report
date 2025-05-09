@@ -1,6 +1,12 @@
 # Scholarly Reports for Institutes
 
-The tools here are meant to solve a very annoying issue: preparing reports for departments or institutes that require to collect all the publication information from a number of authors. I implemented these tools to address that issue. It works with Google Scholar IDs.
+This software package is meant to solve a very annoying issue: preparing interactive reports for departments or institutes that are required to collect all the publication information from the members of their workforce during a specific period. By providing a bunch of Google Scholar IDs, you will get from this tool an interactive interface that allows you to track,
+
+* The total number of yearly publications and citations,
+* Collaboration network among scientists through shared co-authorsipts,
+* Journals in which publications appear, etc.
+
+If you run into this software and are interested in using it for your own needs but not sure how to do it, please feel free to reach out to me via meren@hifmb.de and I will help you to setup and deploy it :)
 
 # Installation
 
