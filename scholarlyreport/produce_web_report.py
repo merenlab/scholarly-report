@@ -1067,6 +1067,20 @@ class HTMLGenerator:
 
         print("Generated index page")
 
+    def _parse_authors(self, author_string):
+        """Parse author string into a list of author names"""
+        if not author_string:
+            return []
+
+        # Split author string - handles both comma-separated and "and" separated lists
+        authors = []
+        # Replace "and" with comma for consistent splitting
+        author_string = author_string.replace(" and ", ", ")
+        for name in author_string.split(','):
+            name = name.strip()
+            if name and len(name) > 1:  # Skip empty or single-letter names
+                authors.append(name)
+        return authors
 
     def _generate_author_pages(self):
         """Generate individual pages for each author"""
@@ -1107,7 +1121,54 @@ class HTMLGenerator:
             yearly_citations[year] += int(pub.get('citations', 0))
             journals[pub.get('journal', 'Unknown')] += 1
 
-        # List of co-authors from our dataset
+
+        # Since we have the data for publications, let's generate data for authorship positions
+        # This will be missing co-first and co-senior authorships, for which I don't have a good
+        # solution since such information is not tracked in publication records that reach to
+        # Google Scholar
+        authorship_positions = {
+            'First Author': {'count': 0, 'citations': 0},
+            'Last Author': {'count': 0, 'citations': 0},
+            'Middle Author': {'count': 0, 'citations': 0},
+            'Solo Author': {'count': 0, 'citations': 0}
+        }
+
+        for pub in publications:
+            author_list = self._parse_authors(pub.get('authors', ''))
+            citations = int(pub.get('citations', 0))
+
+            # Skip if no authors found
+            if not author_list:
+                continue
+
+            # Detect if author name is in the list (using case-insensitive comparison)
+            author_name = author_data.get('name', '').lower()
+            author_positions = [i for i, name in enumerate(author_list) if name.lower() == author_name]
+
+            # Skip if author not found in list (which would be strange)
+            if not author_positions:
+                continue
+
+            position = author_positions[0]  # Take the first occurrence if multiple
+
+            if len(author_list) == 1:
+                # Solo-authored paper
+                authorship_positions['Solo Author']['count'] += 1
+                authorship_positions['Solo Author']['citations'] += citations
+            elif position == 0:
+                # First author
+                authorship_positions['First Author']['count'] += 1
+                authorship_positions['First Author']['citations'] += citations
+            elif position == len(author_list) - 1:
+                # Last author
+                authorship_positions['Last Author']['count'] += 1
+                authorship_positions['Last Author']['citations'] += citations
+            else:
+                # Middle author
+                authorship_positions['Middle Author']['count'] += 1
+                authorship_positions['Middle Author']['citations'] += citations
+
+        # Let's figure out of all the co-authors of this author from our dataset
         coauthors = []
         for neighbor_id in self.data.coauthor_network.neighbors(author_id):
             neighbor_data = self.data.authors.get(neighbor_id, {})
@@ -1118,6 +1179,23 @@ class HTMLGenerator:
                 'publications': edge_data.get('weight', 0),
                 'shared_pub_ids': edge_data.get('publications', [])
             })
+
+        # Extract and count ALL co-authors (i.e., not just those in our dataset) that
+        # appear in the publications from this author
+        all_coauthors = {}
+        for pub in publications:
+            author_list = self._parse_authors(pub.get('authors', ''))
+            for coauthor in author_list:
+                # Skip the author themselves
+                if coauthor.lower() != author_data.get('name', '').lower():
+                    # Standardize author name
+                    coauthor = ' '.join(p.lower().capitalize() for p in coauthor.split())
+
+                    # Update the thingy
+                    all_coauthors[coauthor] = all_coauthors.get(coauthor, 0) + 1
+
+        # Sort co-authors by frequency
+        sorted_all_coauthors = sorted(all_coauthors.items(), key=lambda x: x[1], reverse=True)
 
         # Sort co-authors by number of shared publications
         coauthors.sort(key=lambda x: x['publications'], reverse=True)
@@ -1220,7 +1298,9 @@ class HTMLGenerator:
             html += f"""
             <div class="card">
                 <h2 class="card-title">Co-Authors</h2>
-                <p>List of co-authors included in this analysis and the number of publications they shared with {name} between <b>{min_year}</b> to <b>{max_year}</b>:
+                <p>This table only includes the co-authors of {name} from the {self.institute_name} that co-authored a publication with them between {min_year} and {max_year},
+                and were included in the dataset. If you would like to see every single person person who have co-authored a publication with {name} within this period
+                (regardless of whether they were included in the dataset), please see the "All Co-Authors" table below on this page.</p>
                 <table>
                     <thead>
                         <tr>
@@ -1245,9 +1325,60 @@ class HTMLGenerator:
             </div>
             """
 
+        ###########################################################################
+        # Authorship position summary
+        ###########################################################################
+        html += f"""
+        <div class="card">
+            <h2 class="card-title">Summary of Author Role</h2>
+            <p>The following table shows the distribution of publications by {name} between {min_year} and {max_year} with respect to
+            their position in the list of authors. Please note that these data do not include co-first authorships and co-senior
+            authorships since that information is unfortunately is not a part of the publication record and therefore lost at
+            the Google Scholar level. Plus, author order is not always predictive of the role of a given author in a given
+            publication, and the significance of these positions may differ from discipline to discipline.</p>
+            <table id="authorship-table">
+                <thead>
+                    <tr>
+                        <th>Position</th>
+                        <th style="text-align:center;">Number of Publications</th>
+                        <th style="text-align:center;">Percentage</th>
+                        <th style="text-align:center;">Total Citations</th>
+                        <th style="text-align:center;">Average Citations</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+
+        # Calculate total for percentage
+        total_count = sum(pos['count'] for pos in authorship_positions.values())
+        total_citations = sum(pos['citations'] for pos in authorship_positions.values())
+
+        # Add rows in specific order
+        for position in ['First Author', 'Last Author', 'Middle Author', 'Solo Author']:
+            count = authorship_positions[position]['count']
+            citations = authorship_positions[position]['citations']
+            percentage = (count / total_count * 100) if total_count > 0 else 0
+            avg_citations = (citations / count) if count > 0 else 0
+
+            html += f"""
+                    <tr>
+                        <td>{position}</td>
+                        <td style="text-align:center;">{count}</td>
+                        <td style="text-align:center;">{percentage:.1f}%</td>
+                        <td style="text-align:center;">{citations}</td>
+                        <td style="text-align:center;">{avg_citations:.1f}</td>
+                    </tr>
+            """
+
+        html += """
+                </tbody>
+            </table>
+        </div>
+        """
+
         # Top journals
         if journals:
-            top_journals = journals.most_common(10)
+            top_journals = journals.most_common(20)
             html += """
             <div class="card">
                 <h2 class="card-title">Top Publication Venues</h2>
@@ -1255,7 +1386,7 @@ class HTMLGenerator:
                     <thead>
                         <tr>
                             <th>Journal</th>
-                            <th>Publications</th>
+                            <th style="text-align:center;">Publications</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1264,8 +1395,8 @@ class HTMLGenerator:
             for journal, count in top_journals:
                 html += f"""
                         <tr>
-                            <td>{journal}</td>
-                            <td>{count}</td>
+                            <td><a href="https://www.google.com/search?q={'+'.join(journal.split())}" target="_blank">{journal}</a></td>
+                            <td style="text-align:center;">{count}</td>
                         </tr>
                 """
 
@@ -1289,7 +1420,7 @@ class HTMLGenerator:
                             <th>Year</th>
                             <th>Title</th>
                             <th>Journal</th>
-                            <th>Citations</th>
+                            <th style="text-align:center;">Citations</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1308,7 +1439,7 @@ class HTMLGenerator:
                             <td>{year}</td>
                             <td>{title_with_link}</td>
                             <td>{pub.get('journal', '')}</td>
-                            <td>{citations}</td>
+                            <td style="text-align:center;">{citations}</td>
                         </tr>
             """
 
@@ -1317,6 +1448,40 @@ class HTMLGenerator:
                 </table>
             </div>
         """
+
+        ###########################################################################
+        # Bigass "ALL COAUTHORS" table
+        ###########################################################################
+        html += f"""
+        <div class="card">
+            <h2 class="card-title">All Co-Authors</h2>
+            <p>This table shows every single person who have co-authored a publication with {name} between {min_year} and {max_year}.
+            If you would like to see the list of co-authors of {name} from the {self.institute_name} who appeared in this dataset,
+            please see the section called "Co-Authors" instead.</p>
+            <table id="all-coauthors-table" class="display">
+                <thead>
+                    <tr>
+                        <th>Co-Author Name</th>
+                        <th>Number of Publications</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+
+        for coauthor_name, pub_count in sorted_all_coauthors:
+            html += f"""
+                <tr>
+                    <td>{coauthor_name}</td>
+                    <td>{pub_count}</td>
+                </tr>
+            """
+
+        html += """
+                </tbody>
+            </table>
+        </div>
+        """
+
 
         ###########################################################################
         # END OF PAGE
@@ -1449,6 +1614,12 @@ class HTMLGenerator:
                         { "type": "num", "targets": [0, 3] } // Numeric sorting for year and citations
                     ],
                     "autoWidth": false
+                });
+                $('#all-coauthors-table').DataTable({
+                                "paging": false,
+                                "info": false,
+                                "order": [[1, 'desc']], // Default sort by publication count (desc)
+                                "autoWidth": false
                 });
             });
         </script>
