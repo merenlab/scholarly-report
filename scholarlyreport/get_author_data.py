@@ -142,7 +142,7 @@ class Author:
             "total_citations": self.citations,
             "h_index": self.h_index,
             "i10_index": self.i10_index,
-            "publication_count": len(self.publications)
+            "publication_count": getattr(self, 'pub_count', str(len(self.publications)))
         }
 
         if self.min_year_filter:
@@ -350,9 +350,16 @@ class GoogleScholarScraper:
             # Load all publications
             self._show_more_publications()
 
-            # Extract publication data
-            pub_elements = self.driver.find_elements(By.CSS_SELECTOR, "tr.gsc_a_tr")
-            print(f"Found {len(pub_elements)} publications")
+            # Now that all publications are loaded, get the total count
+            try:
+                # Count all publications on the page now that they're fully loaded
+                pub_elements = self.driver.find_elements(By.CSS_SELECTOR, "tr.gsc_a_tr")
+                author.pub_count = str(len(pub_elements))
+                print(f"Publication count: {author.pub_count}")
+            except Exception as e:
+                print(f"Error getting publication count: {str(e)}")
+                author.pub_count = "0"
+                print("Set author pub count to 0 :/")
 
             # Process each publication
             for i, pub_element in enumerate(pub_elements):
