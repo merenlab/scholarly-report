@@ -198,7 +198,7 @@ class GoogleScholarScraper:
         url = f"https://scholar.google.com/citations?user={profile_id}&hl=en"
         print(f"Accessing URL: {url}")
         self.driver.get(url)
-        time.sleep(3)  # Initial wait for page to load
+        time.sleep(5)  # Initial wait for page to load
 
         # Get author name
         author_name = self.driver.find_element(By.ID, "gsc_prf_in").text.replace('.', '')
@@ -234,7 +234,7 @@ class GoogleScholarScraper:
                     break
                 show_more.click()
                 print("Clicked 'Show More'")
-                time.sleep(2)  # Wait for content to load
+                time.sleep(5)  # Wait for content to load
                 show_more_attempts += 1
             except Exception as e:
                 print(f"No more publications to load or error: {str(e)}")
@@ -306,12 +306,12 @@ class GoogleScholarScraper:
             print(f"Getting full details for: {title[:30]}...")
 
             # Add a small random delay to avoid detection
-            time.sleep(random.uniform(1.0, 2.5))
+            time.sleep(random.uniform(5.0, 10.0))
 
             # Open publication page in a new window
             self.driver.execute_script(f"window.open('{pub_link}', '_blank');")
             self.driver.switch_to.window(self.driver.window_handles[1])
-            time.sleep(2)
+            time.sleep(4)
 
             try:
                 # Try to find the full author list in the popup
