@@ -10,7 +10,24 @@ If you run into this software and are interested in using it for your own needs 
 
 # Installation
 
-To install this package, simply run the following commands:
+To install this package, follow the simple steps below.
+
+## Create a conda environment
+
+This will make sure the package will not interfere with any other libraries installed on your system. Open a new terminal and run the following commands:
+
+```bash
+# deactivate any conda environment you may be in
+conda deactivate
+
+# create a new conda environment for scholarly-report
+conda create -y --name scholarly-report python=3.10
+
+# activate that environment
+conda activate scholarly-report
+```
+
+Now you can get a copy of the code, and install it nto this new conda environment:
 
 ```bash
 # make sure there is an appropriate directory
@@ -26,10 +43,16 @@ cd scholarly-report
 pip install -e .
 ```
 
-This should install everything. The package name is `scholarly-report`, and you can easily remove it from your system with the following command (which you shouldn't run NOW if you want to play with it):
+If you are here, and running this command gives you a nice help menu rather than a command not found error, you are golden:
 
 ```bash
-pip uninstall scholarly-report
+sc-get-author-data -h
+```
+
+Now you can jump to the Usage section below. But please keep in mind that every time you open a new terminal, you will have to run the following command to activate your conda environment:
+
+```bash
+conda activate scholarly-report
 ```
 
 # Usage
