@@ -218,4 +218,29 @@
         .author-stats:last-of-type .stat-box {
             background-color: #f0f8ff;
         }
+
+        .author-position {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .first-author {
+            background-color: #4CAF50; /* Green */
+        }
+
+        .last-author {
+            background-color: #F44336; /* Red */
+        }
+
+        .middle-author {
+            background-color: #9E9E9E; /* Gray */
+        }
+
+        .solo-author {
+            background-color: #4CAF50; /* Green */
+            border: 2px solid #303030; /* Dark border to distinguish from first author */
+        }
         
