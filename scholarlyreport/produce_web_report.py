@@ -570,6 +570,31 @@ class HTMLGenerator:
         .author-stats:last-of-type .stat-box {
             background-color: #f0f8ff;
         }
+
+        .author-position {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .first-author {
+            background-color: #4CAF50; /* Green */
+        }
+
+        .last-author {
+            background-color: #F44336; /* Red */
+        }
+
+        .middle-author {
+            background-color: #9E9E9E; /* Gray */
+        }
+
+        .solo-author {
+            background-color: #4CAF50; /* Green */
+            border: 2px solid #303030; /* Dark border to distinguish from first author */
+        }
         """
 
         with open(self.css_dir / "style.css", 'w') as f:
@@ -1418,6 +1443,7 @@ class HTMLGenerator:
                     <thead>
                         <tr>
                             <th>Year</th>
+                            <th style="text-align: center;">P</th>
                             <th>Title</th>
                             <th>Journal</th>
                             <th style="text-align:center;">Citations</th>
@@ -1430,6 +1456,31 @@ class HTMLGenerator:
             pub_url = pub.get('pub_url', '')
             title_with_link = f"<a href='{pub_url}' target='_blank'>{pub.get('title', 'Unknown Title')}</a>" if pub_url else pub.get('title', 'Unknown Title')
 
+            # Determine author position
+            author_list = self._parse_authors(pub.get('authors', ''))
+            author_name = author_data.get('name', '').lower()
+            author_position = None
+            position_class = "middle-author"
+            position_sort_value = 3
+            
+            if author_list:
+                # Find the author's position
+                author_positions = [i for i, name in enumerate(author_list) if name.lower() == author_name]
+                if author_positions:
+                    position = author_positions[0]
+                    
+                    if len(author_list) == 1:
+                        position_class = "solo-author"
+                        position_sort_value = 4
+                    elif position == 0:
+                        position_class = "first-author"
+                        position_sort_value = 2
+                    elif position == len(author_list) - 1:
+                        position_class = "last-author"
+                        position_sort_value = 3
+                    else:
+                        position_sort_value = 1
+
             # Just to make sure year and citations values will always be numeric
             year = pub.get('year', '')
             citations = pub.get('citations', 0)
@@ -1437,6 +1488,7 @@ class HTMLGenerator:
             html += f"""
                         <tr>
                             <td>{year}</td>
+                            <td style="text-align: center;" data-order="{position_sort_value}"><span class="author-position {position_class}" title="{position_class}"></span></td>
                             <td>{title_with_link}</td>
                             <td>{pub.get('journal', '')}</td>
                             <td style="text-align:center;">{citations}</td>
