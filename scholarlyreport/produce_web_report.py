@@ -3,6 +3,7 @@
 import re
 import sys
 import json
+import yaml
 import random
 import argparse
 import pandas as pd
@@ -11,10 +12,33 @@ from pathlib import Path
 from datetime import datetime
 from collections import Counter, defaultdict
 
+
+def load_author_aliases(yaml_file):
+    """Load author aliases from a YAML file"""
+    try:
+        with open(yaml_file, 'r') as f:
+            aliases = yaml.safe_load(f)
+
+        # Convert to the format we'll use: {scholar_id: [list of alternative names]}
+        aliases_dict = {}
+        for scholar_id, names in aliases.items():
+            if isinstance(names, list):
+                aliases_dict[scholar_id] = names
+            else:
+                # Handle single string case
+                aliases_dict[scholar_id] = [names]
+
+        print(f"Loaded aliases for {len(aliases_dict)} authors from {yaml_file}")
+        return aliases_dict
+    except Exception as e:
+        print(f"Error loading author aliases from {yaml_file}: {str(e)}")
+        sys.exit(-1)
+
+
 class PublicationData:
     """Handles loading and processing of publication data"""
 
-    def __init__(self, data_dir, excluded_journals=None):
+    def __init__(self, data_dir, excluded_journals=None, author_aliases=None):
         """Initialize with the directory containing publication data"""
         self.data_dir = Path(data_dir)
         self.authors = {}  # Dictionary of author info (from _info.csv)
@@ -22,6 +46,7 @@ class PublicationData:
         self.author_publications = defaultdict(list)  # Publications by author
         self.coauthor_network = nx.Graph()  # Graph for co-authorship network
         self.journal_mapping = {}  # Mapping from raw journal names to standardized names
+        self.author_aliases = author_aliases or {}  # Dictionary of author aliases
 
         # figure out journal names to be excluded
         self.excluded_journals = []
@@ -76,6 +101,57 @@ class PublicationData:
                 print(f"Loaded author: {self.authors[scholar_id]['name']}")
         except Exception as e:
             print(f"Error loading author info from {info_file}: {str(e)}")
+
+    def is_author_match(self, name, scholar_id):
+        """
+        Check if a name matches any alias for the given scholar ID
+
+        This method checks:
+        1. If the name matches the primary name in our dataset
+        2. If the name matches any alias defined in the author_aliases dict
+        3. Performs case-insensitive and whitespace-normalized matching
+        """
+        if not name or not scholar_id:
+            return False
+
+        # Normalize the name (lowercase, strip whitespace, normalize spacing)
+        name_norm = ' '.join(name.lower().split())
+
+        # Check if name matches the primary name in our dataset
+        if scholar_id in self.authors:
+            primary_name = ' '.join(self.authors[scholar_id]['name'].lower().split())
+            if primary_name == name_norm:
+                return True
+
+        # Check if scholar_id is in aliases and if the name matches any alias
+        if scholar_id in self.author_aliases:
+            for alias in self.author_aliases[scholar_id]:
+                alias_norm = ' '.join(alias.lower().split())
+                if alias_norm == name_norm:
+                    return True
+
+        return False
+
+    def _is_author_match(self, name, scholar_id):
+        """Check if a name matches any alias for the given scholar ID"""
+        if not name or not scholar_id:
+            return False
+
+        # Convert to lowercase for case-insensitive matching
+        name_lower = name.lower()
+
+        # Check if scholar_id is in aliases and if the name matches any alias
+        if scholar_id in self.author_aliases:
+            for alias in self.author_aliases[scholar_id]:
+                if alias.lower() == name_lower:
+                    return True
+
+        # Also check against the author's name in our dataset
+        if scholar_id in self.authors:
+            if self.authors[scholar_id]['name'].lower() == name_lower:
+                return True
+
+        return False
 
     def _standardize_journal_name(self, journal_name):
         """Standardize journal name to fix capitalization and other inconsistencies"""
@@ -298,7 +374,7 @@ class PublicationData:
 class HTMLGenerator:
     """Generates HTML content for the scholarly network visualization"""
 
-    def __init__(self, data, output_dir, institute_name=None):
+    def __init__(self, data, output_dir, institute_name=None, author_aliases=None):
         """Initialize with publication data and output directory"""
         self.data = data
         self.institute_name = institute_name
@@ -307,6 +383,7 @@ class HTMLGenerator:
         self.js_dir = self.output_dir / "js"
         self.css_dir = self.output_dir / "css"
         self.data_dir = self.output_dir / "data"
+        self.author_aliases = author_aliases or {}
 
     def generate_site(self):
         """Generate the complete website"""
@@ -1092,20 +1169,50 @@ class HTMLGenerator:
 
         print("Generated index page")
 
-    def _parse_authors(self, author_string):
-        """Parse author string into a list of author names"""
-        if not author_string:
-            return []
+    def _find_author_position(self, author_list, author_id):
+        """
+        Find the position of an author in the author list, considering aliases
 
-        # Split author string - handles both comma-separated and "and" separated lists
-        authors = []
-        # Replace "and" with comma for consistent splitting
-        author_string = author_string.replace(" and ", ", ")
-        for name in author_string.split(','):
-            name = name.strip()
-            if name and len(name) > 1:  # Skip empty or single-letter names
-                authors.append(name)
-        return authors
+        Returns:
+        - The index position in author_list if found
+        - None if the author isn't found
+        """
+        if not author_list or not author_id:
+            return None
+
+        # For debugging (uncomment if needed):
+        # print(f"Finding position for {author_id} in list of {len(author_list)} authors")
+
+        # Check each position in the author list
+        for i, name in enumerate(author_list):
+            # Check if the current name matches any alias for this author
+            if self.data.is_author_match(name, author_id):
+                return i
+
+        # If we got here, no match was found
+        return None
+
+    def _is_author_match(self, name, author_id):
+        """Check if a name matches any alias for the given author ID"""
+        if not name or not author_id:
+            return False
+
+        # Convert to lowercase for case-insensitive matching
+        name_lower = name.lower()
+
+        # First check if the exact name from our authors dataset matches
+        if author_id in self.data.authors:
+            if self.data.authors[author_id]['name'].lower() == name_lower:
+                return True
+
+        # Then check against aliases if provided
+        if self.author_aliases and author_id in self.author_aliases:
+            for alias in self.author_aliases[author_id]:
+                if alias.lower() == name_lower:
+                    return True
+
+        return False
+
 
     def _generate_author_pages(self):
         """Generate individual pages for each author"""
@@ -1159,22 +1266,19 @@ class HTMLGenerator:
         }
 
         for pub in publications:
-            author_list = self._parse_authors(pub.get('authors', ''))
+            author_list = self.data._parse_authors(pub.get('authors', ''))
             citations = int(pub.get('citations', 0))
 
             # Skip if no authors found
             if not author_list:
                 continue
 
-            # Detect if author name is in the list (using case-insensitive comparison)
-            author_name = author_data.get('name', '').lower()
-            author_positions = [i for i, name in enumerate(author_list) if name.lower() == author_name]
+            # Use our alias-aware method to find the author's position
+            position = self._find_author_position(author_list, author_id)
 
             # Skip if author not found in list (which would be strange)
-            if not author_positions:
+            if position is None:
                 continue
-
-            position = author_positions[0]  # Take the first occurrence if multiple
 
             if len(author_list) == 1:
                 # Solo-authored paper
@@ -1209,15 +1313,17 @@ class HTMLGenerator:
         # appear in the publications from this author
         all_coauthors = {}
         for pub in publications:
-            author_list = self._parse_authors(pub.get('authors', ''))
+            author_list = self.data._parse_authors(pub.get('authors', ''))
             for coauthor in author_list:
-                # Skip the author themselves
-                if coauthor.lower() != author_data.get('name', '').lower():
-                    # Standardize author name
-                    coauthor = ' '.join(p.lower().capitalize() for p in coauthor.split())
+                # Skip the author themselves (using our alias-aware matching)
+                if self.data.is_author_match(coauthor, author_id):
+                    continue
 
-                    # Update the thingy
-                    all_coauthors[coauthor] = all_coauthors.get(coauthor, 0) + 1
+                # Standardize author name
+                coauthor = ' '.join(p.lower().capitalize() for p in coauthor.split())
+
+                # Update the counter
+                all_coauthors[coauthor] = all_coauthors.get(coauthor, 0) + 1
 
         # Sort co-authors by frequency
         sorted_all_coauthors = sorted(all_coauthors.items(), key=lambda x: x[1], reverse=True)
@@ -1457,18 +1563,15 @@ class HTMLGenerator:
             title_with_link = f"<a href='{pub_url}' target='_blank'>{pub.get('title', 'Unknown Title')}</a>" if pub_url else pub.get('title', 'Unknown Title')
 
             # Determine author position
-            author_list = self._parse_authors(pub.get('authors', ''))
-            author_name = author_data.get('name', '').lower()
-            author_position = None
+            author_list = self.data._parse_authors(pub.get('authors', ''))
             position_class = "middle-author"
             position_sort_value = 3
-            
+
             if author_list:
-                # Find the author's position
-                author_positions = [i for i, name in enumerate(author_list) if name.lower() == author_name]
-                if author_positions:
-                    position = author_positions[0]
-                    
+                # Use a helper function to find the author's position considering aliases
+                position = self._find_author_position(author_list, author_id)
+
+                if position is not None:
                     if len(author_list) == 1:
                         position_class = "solo-author"
                         position_sort_value = 4
@@ -1683,7 +1786,6 @@ class HTMLGenerator:
         with open(self.authors_dir / f"{author_id}.html", 'w') as f:
             f.write(html)
 
-
     def _generate_journal_page(self):
         """Generate page with journal statistics"""
         html = self._page_header("Journal Analysis", active_page="journals")
@@ -1696,7 +1798,7 @@ class HTMLGenerator:
                 <h2 class="card-title">Journal Publication Analysis</h2>
                 <p>This page shows statistics about publication venues in this dataset.</p>
 
-                <table>
+                <table id="journals-table" class="display">
                     <thead>
                         <tr>
                             <th>Journal</th>
@@ -1708,8 +1810,8 @@ class HTMLGenerator:
                     <tbody>
         """
 
-        # Sort journals by publication count
-        for journal in sorted(journal_stats, key=lambda x: x['publications'], reverse=True):
+        # No longer need to sort here as DataTables will handle sorting
+        for journal in journal_stats:
             html += f"""
                         <tr>
                             <td>{journal['journal']}</td>
@@ -1726,13 +1828,32 @@ class HTMLGenerator:
         </div>
         """
 
+        # Add JavaScript to initialize DataTables
+        html += """
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                $('#journals-table').DataTable({
+                    "paging": false,
+                    "info": false,
+                    "order": [[1, 'desc']], // Default sort by publications count (desc)
+                    "columnDefs": [
+                        { "type": "num", "targets": [1, 2, 3] } // Numeric sorting for counts and averages
+                    ],
+                    "autoWidth": false,
+                    "scrollX": true      // Add horizontal scrolling if needed
+                });
+            });
+        </script>
+        """
+
         html += self._page_footer()
 
         with open(self.output_dir / "journals.html", 'w') as f:
             f.write(html)
 
         print("Generated journal analysis page")
-
 
     def _page_header(self, title, active_page="index"):
         """Generate the common header for all pages"""
@@ -1788,6 +1909,7 @@ def main():
     parser.add_argument("--output-dir", "-o", default="scholar_viz", help="Output directory for HTML files")
     parser.add_argument("--exclude-journals", type=str, help="Path to a text file that cointains journal names to exclude (one per line)")
     parser.add_argument("--institute-name", type=str, help="The name of the institute that brings together all the people in the data directory (i.e., ICBM, or HIFMB, etc)")
+    parser.add_argument("--author-aliases", type=str, help="Path to a YAML file containing author name aliases (alternative spellings of author names)")
 
     args = parser.parse_args()
 
@@ -1801,14 +1923,20 @@ def main():
         except Exception as e:
             print(f"Error reading exclusion file: {e}")
 
+    # Load author aliases if specified
+    if args.author_aliases:
+        author_aliases = load_author_aliases(args.author_aliases)
+    else:
+        author_aliases = {}
+
     # Load the data
-    data = PublicationData(args.data_dir, excluded_journals=excluded_journals)
+    data = PublicationData(args.data_dir, excluded_journals=excluded_journals, author_aliases=author_aliases)
     if not data.load_data():
         print("Error: Failed to load data.")
         return 1
 
     # Generate the HTML site
-    generator = HTMLGenerator(data, args.output_dir, args.institute_name)
+    generator = HTMLGenerator(data, args.output_dir, args.institute_name, author_aliases=author_aliases)
     generator.generate_site()
 
     print(f"Visualization generated in {args.output_dir}")
