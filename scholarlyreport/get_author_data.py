@@ -286,25 +286,23 @@ class GoogleScholarScraper:
         except:
             citations, h_index, i10_index = "0", "0", "0"
 
-        print(f"Citations: {citations}, h-index: {h_index}, i10-index: {i10_index}")
+        print(f"Found profile for: {author_name} (citations: {citations}, h-index: {h_index}")
 
         return Author(profile_id, author_name, affiliation, citations, h_index, i10_index)
 
     def _show_more_publications(self):
         """Click 'Show More' button to reveal more publications"""
+
         show_more_attempts = 0
         while show_more_attempts < 10:  # Limit attempts to avoid infinite loop
             try:
                 show_more = self.wait.until(EC.element_to_be_clickable((By.ID, "gsc_bpf_more")))
-                if not show_more.is_displayed() or not show_more.is_enabled():
-                    print("No more 'Show More' button visible")
-                    break
                 show_more.click()
-                print("Clicked 'Show More'")
-                time.sleep(5)  # Wait for content to load
+                print(" - Clicked 'Show More'")
+                time.sleep(3)
                 show_more_attempts += 1
             except Exception as e:
-                print(f"No more publications to load or error: {str(e)}")
+                print(f"Profile page is fully loaded!")
                 break
 
     def _get_publication_details(self, pub_element, author, i, total_count):
@@ -351,12 +349,6 @@ class GoogleScholarScraper:
                 author.profile_id, author.name, title, full_authors,
                 venue_info, year, citations, pub_link
             )
-
-            # Log progress
-            if i < 3 or i % 10 == 0:  # Print first few and occasional updates
-                print(f"Processed {i+1}/{total_count}: {title[:30]}... ({year}) - {citations} citations")
-                print(f"  Journal: '{publication.journal}', Volume: {publication.volume}, Issue: {publication.issue}")
-                print(f"  Authors: {full_authors[:50]}{'...' if len(full_authors) > 50 else ''}")
 
             return publication
 
@@ -510,14 +502,15 @@ def main():
         else:
             year_coverage = f" (publications between {args.min_year} and {args.max_year})"
 
+    print()
+    print("############################################################################################")
     print(f"Starting Google Scholar scraping for ID: {args.scholar_id}{year_coverage}")
-
-    # Create and run the scraper
-    scraper = GoogleScholarScraper(headless=not args.no_headless)
     if args.scraperapi_key:
         print(f"Using ScraperAPI for web access")
     else:
         print(f"Using direct web access (these requests may be blocked by Google)")
+    print("############################################################################################")
+    print()
 
     # Get a scraper instance and run it
     scraper = GoogleScholarScraper(headless=not args.no_headless,
