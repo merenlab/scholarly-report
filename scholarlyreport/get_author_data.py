@@ -7,6 +7,7 @@ import time
 import random
 import argparse
 import traceback
+import urllib.parse
 import pandas as pd
 
 # All the selenium stuff
@@ -163,7 +164,7 @@ class Author:
 class GoogleScholarScraper:
     """Main scraper class for Google Scholar profiles"""
 
-    def __init__(self, headless=True):
+    def __init__(self, headless=True, scraperapi_key=None, scraperapi_params=None):
         """Initialize the scraper with browser configuration"""
         self.options = Options()
 
@@ -177,6 +178,14 @@ class GoogleScholarScraper:
 
         self.driver = None
         self.wait = None
+
+        self.scraperapi_key = scraperapi_key
+        self.scraperapi_params = scraperapi_params or ''
+
+        # Define default wait times based on access method
+        self.page_load_wait = 2 if scraperapi_key else 5
+        self.detail_page_wait = 3 if scraperapi_key else random.uniform(5.0, 10.0)
+
 
     def _init_driver(self):
         """Initialize the webdriver"""
@@ -193,16 +202,74 @@ class GoogleScholarScraper:
             self.driver = None
             self.wait = None
 
+    def _get_scraperapi_url(self, original_url):
+        """Convert a regular URL to a ScraperAPI URL"""
+        if not self.scraperapi_key:
+            return original_url
+
+        # URL encode the target
+        encoded_url = urllib.parse.quote(original_url)
+
+        # Construct ScraperAPI URL
+        api_url = f"http://api.scraperapi.com?api_key={self.scraperapi_key}&url={encoded_url}"
+
+        # Add any additional parameters
+        if self.scraperapi_params:
+            api_url += f"&{self.scraperapi_params}"
+
+        return api_url
+
+    def _access_url(self, url, new_window=False, description="", direct_enforced=False):
+        """Wrapper method to access a URL using either direct access or ScraperAPI"""
+
+        try:
+            # Log the access attempt
+            if description:
+                print(f"Accessing {description}")
+            else:
+                print(f"Accessing URL: {url}")
+
+            # Get the appropriate URL (ScraperAPI or direct)
+            if not direct_enforced:
+                # In this case we will access the URL either directly or
+                # using scraper API
+                access_url = self._get_scraperapi_url(url)
+            else:
+                # If we are here it means regardless of whether we have
+                # a scrapper API key or not, we will access the URL directly
+                access_url = url
+
+            # Determine whether to use a new window
+            if new_window:
+                # Open URL in a new window
+                self.driver.execute_script(f"window.open('{access_url}', '_blank');")
+                self.driver.switch_to.window(self.driver.window_handles[1])
+            else:
+                # Access in current window
+                self.driver.get(access_url)
+
+            # Wait appropriately based on access method
+            if new_window:
+                time.sleep(self.detail_page_wait)
+            else:
+                time.sleep(self.page_load_wait)
+
+            return True
+
+        except Exception as e:
+            print(f"Error accessing URL {url}: {str(e)}")
+            return False
+
     def _get_author_info(self, profile_id):
         """Extract author information from profile page"""
+
         url = f"https://scholar.google.com/citations?user={profile_id}&hl=en"
-        print(f"Accessing URL: {url}")
-        self.driver.get(url)
-        time.sleep(5)  # Initial wait for page to load
+
+        # Use the wrapper method to access the URL
+        self._access_url(url, description="author profile", direct_enforced=True)
 
         # Get author name
         author_name = self.driver.find_element(By.ID, "gsc_prf_in").text.replace('.', '')
-        print(f"Found profile for: {author_name}")
 
         # Get affiliation
         try:
@@ -303,15 +370,13 @@ class GoogleScholarScraper:
         full_authors = default_authors
 
         try:
-            print(f"Getting full details for: {title[:30]}...")
+            description = f"publication details for: {title[:30]}..."
 
-            # Add a small random delay to avoid detection
-            time.sleep(random.uniform(5.0, 10.0))
-
-            # Open publication page in a new window
-            self.driver.execute_script(f"window.open('{pub_link}', '_blank');")
-            self.driver.switch_to.window(self.driver.window_handles[1])
-            time.sleep(4)
+            # Access to author page
+            result = self._access_url(pub_link, new_window=True, description=description)
+            if not result:
+                print(f"Something bad happened while trying to acess to '{pub_link}' :(")
+                sys.exit(-1)
 
             try:
                 # Try to find the full author list in the popup
@@ -330,6 +395,7 @@ class GoogleScholarScraper:
             # Close the publication window and switch back to the main window
             self.driver.close()
             self.driver.switch_to.window(self.driver.window_handles[0])
+
         except Exception as e:
             print(f"Error accessing publication details: {e}")
             # If there are multiple windows open, make sure we get back to the main one
@@ -422,6 +488,11 @@ def main():
     parser.add_argument('--no-headless', action='store_true',
                         help='Run browser in visible mode (not headless)')
 
+    # ScraperAPI arguments
+    parser.add_argument('--scraperapi-key', type=str, help='ScraperAPI key to avoid Google blocks')
+    parser.add_argument('--scraperapi-params', type=str, default='',
+                        help='Additional ScraperAPI parameters if any (e.g. "country_code=us&render=true")')
+
     args = parser.parse_args()
 
     # Create output directory if it doesn't exist
@@ -443,6 +514,15 @@ def main():
 
     # Create and run the scraper
     scraper = GoogleScholarScraper(headless=not args.no_headless)
+    if args.scraperapi_key:
+        print(f"Using ScraperAPI for web access")
+    else:
+        print(f"Using direct web access (these requests may be blocked by Google)")
+
+    # Get a scraper instance and run it
+    scraper = GoogleScholarScraper(headless=not args.no_headless,
+                                   scraperapi_key=args.scraperapi_key,
+                                   scraperapi_params=args.scraperapi_params)
     author = scraper.scrape_profile(args.scholar_id, args.min_year, args.max_year)
 
     if author and author.publications:
