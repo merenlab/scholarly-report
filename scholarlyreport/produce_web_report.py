@@ -2279,7 +2279,7 @@ def main():
     parser.add_argument("data_dir", help="Directory containing Google Scholar data files (*_info.csv and *_publications.csv)")
     parser.add_argument("--output-dir", "-o", default="scholar_viz", help="Output directory for HTML files")
     parser.add_argument("--exclude-journals", type=str, help="Path to a text file that cointains journal names to exclude (one per line)")
-    parser.add_argument("--institute-name", type=str, help="The name of the institute that brings together all the people in the data directory (i.e., ICBM, or HIFMB, etc)")
+    parser.add_argument("--institute-name", type=str, required=True, help="The name of the institute that brings together all the people in the data directory (i.e., ICBM, or HIFMB, etc)")
     parser.add_argument("--author-aliases", type=str, help="Path to a YAML file containing author name aliases (alternative spellings of author names)")
 
     args = parser.parse_args()
