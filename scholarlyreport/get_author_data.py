@@ -90,6 +90,13 @@ class Publication:
         # Parse journal information
         self.journal, self.volume, self.issue = JournalParser.parse_metadata(venue_info)
 
+    def get_unique_key(self):
+        """Generate a unique key for this publication based on title and journal"""
+        # Normalize title and journal for comparison
+        title_normalized = self.title.lower().strip()
+        journal_normalized = self.journal.lower().strip()
+        return f"{title_normalized}|||{journal_normalized}"
+
     def to_dict(self):
         """Convert the publication to a dictionary for DataFrame creation"""
         return {
@@ -161,6 +168,78 @@ class Author:
         return pd.DataFrame([pub.to_dict() for pub in self.publications])
 
 
+class ExistingDataManager:
+    """Manages loading and tracking existing publication data"""
+
+    def __init__(self, output_dir, profile_id):
+        self.output_dir = output_dir
+        self.profile_id = profile_id
+        self.existing_publications = {}
+        self.publications_file = os.path.join(output_dir, f"{profile_id}_publications.csv")
+        self.load_existing_data()
+
+    def load_existing_data(self):
+        """Load existing publications from CSV file"""
+        if os.path.exists(self.publications_file):
+            try:
+                df = pd.read_csv(self.publications_file, sep='\t')
+                print(f"Loaded {len(df)} existing publications from {self.publications_file}")
+
+                for _, row in df.iterrows():
+                    # Create a unique key based on title and journal
+                    title_normalized = str(row.get('title', '')).lower().strip()
+                    journal_normalized = str(row.get('journal', '')).lower().strip()
+                    unique_key = f"{title_normalized}|||{journal_normalized}"
+
+                    # Store the existing publication data
+                    self.existing_publications[unique_key] = {
+                        'title': row.get('title', ''),
+                        'authors': row.get('authors', ''),
+                        'venue': row.get('venue', ''),
+                        'journal': row.get('journal', ''),
+                        'volume': row.get('volume', ''),
+                        'issue': row.get('issue', ''),
+                        'year': row.get('year', ''),
+                        'citations': row.get('citations', ''),
+                        'pub_url': row.get('pub_url', ''),
+                        'scholar_id': row.get('scholar_id', ''),
+                        'author_name': row.get('author_name', '')
+                    }
+
+            except Exception as e:
+                print(f"Error loading existing data: {e}")
+                print("Starting with empty publication database")
+                self.existing_publications = {}
+        else:
+            print(f"No existing publications file found at {self.publications_file}")
+            print("Starting with empty publication database")
+
+    def is_publication_exists(self, title, journal):
+        """Check if a publication already exists"""
+        title_normalized = title.lower().strip()
+        journal_normalized = journal.lower().strip()
+        unique_key = f"{title_normalized}|||{journal_normalized}"
+        return unique_key in self.existing_publications
+
+    def get_existing_publication(self, title, journal):
+        """Get existing publication data"""
+        title_normalized = title.lower().strip()
+        journal_normalized = journal.lower().strip()
+        unique_key = f"{title_normalized}|||{journal_normalized}"
+        return self.existing_publications.get(unique_key)
+
+    def update_citation_count(self, title, journal, new_citations):
+        """Update citation count for existing publication"""
+        title_normalized = title.lower().strip()
+        journal_normalized = journal.lower().strip()
+        unique_key = f"{title_normalized}|||{journal_normalized}"
+
+        if unique_key in self.existing_publications:
+            old_citations = self.existing_publications[unique_key]['citations']
+            self.existing_publications[unique_key]['citations'] = new_citations
+            print(f"Updated citations for '{title[:50]}...': {old_citations} -> {new_citations}")
+
+
 class GoogleScholarScraper:
     """Main scraper class for Google Scholar profiles"""
 
@@ -186,6 +265,12 @@ class GoogleScholarScraper:
         self.page_load_wait = 2 if scraperapi_key else 5
         self.detail_page_wait = 3 if scraperapi_key else random.uniform(5.0, 10.0)
 
+        # Statistics tracking
+        self.stats = {
+            'new_publications': 0,
+            'updated_publications': 0,
+            'skipped_publications': 0
+        }
 
     def _init_driver(self):
         """Initialize the webdriver"""
@@ -305,7 +390,7 @@ class GoogleScholarScraper:
                 print(f"Profile page is fully loaded!")
                 break
 
-    def _get_publication_details(self, pub_element, author, i, total_count):
+    def _get_publication_details(self, pub_element, author, i, total_count, data_manager):
         """Extract and process details for a single publication"""
         try:
             # Extract basic info from the publication row
@@ -337,20 +422,49 @@ class GoogleScholarScraper:
             citations = citation_element.text.replace('*', '').strip()
             citations = "0" if not citations else citations
 
-            # Default author format from main page
-            full_authors = authors_venue
+            # Parse journal name for comparison
+            journal_name = JournalParser.clean_journal_name(venue_info)
 
-            # Visit publication detail page to get complete information
-            if pub_link:
-                full_authors = self._visit_publication_page(pub_link, title, full_authors, venue_info)
+            # Check if this publication already exists
+            if data_manager.is_publication_exists(title, journal_name):
+                print(f"Publication already exists: {title[:50]}... - updating citations only")
 
-            # Create publication object
-            publication = Publication(
-                author.profile_id, author.name, title, full_authors,
-                venue_info, year, citations, pub_link
-            )
+                # Update citation count in the data manager
+                data_manager.update_citation_count(title, journal_name, citations)
 
-            return publication
+                # Get existing publication data and create Publication object
+                existing_data = data_manager.get_existing_publication(title, journal_name)
+                publication = Publication(
+                    existing_data['scholar_id'],
+                    existing_data['author_name'],
+                    existing_data['title'],
+                    existing_data['authors'],
+                    existing_data['venue'],
+                    existing_data['year'],
+                    citations,  # Updated citation count
+                    existing_data['pub_url']
+                )
+
+                self.stats['updated_publications'] += 1
+                return publication
+            else:
+                print(f"New publication found: {title[:50]}... - scraping full details")
+
+                # This is a new publication, get full details
+                full_authors = authors_venue
+
+                # Visit publication detail page to get complete information
+                if pub_link:
+                    full_authors = self._visit_publication_page(pub_link, title, full_authors, venue_info)
+
+                # Create publication object
+                publication = Publication(
+                    author.profile_id, author.name, title, full_authors,
+                    venue_info, year, citations, pub_link
+                )
+
+                self.stats['new_publications'] += 1
+                return publication
 
         except Exception as e:
             print(f"Error extracting publication {i}: {str(e)}")
@@ -396,10 +510,13 @@ class GoogleScholarScraper:
 
         return full_authors
 
-    def scrape_profile(self, profile_id, min_year=None, max_year=None):
+    def scrape_profile(self, profile_id, min_year=None, max_year=None, output_dir="."):
         """Scrape a Google Scholar profile by ID"""
         try:
             self._init_driver()
+
+            # Initialize data manager to handle existing publications
+            data_manager = ExistingDataManager(output_dir, profile_id)
 
             # Get author information
             author = self._get_author_info(profile_id)
@@ -421,11 +538,16 @@ class GoogleScholarScraper:
 
             # Process each publication
             for i, pub_element in enumerate(pub_elements):
-                publication = self._get_publication_details(pub_element, author, i, len(pub_elements))
+                publication = self._get_publication_details(pub_element, author, i, len(pub_elements), data_manager)
                 if publication:
                     author.add_publication(publication)
 
             # Log results
+            print(f"\nScraping Statistics:")
+            print(f"  - New publications: {self.stats['new_publications']}")
+            print(f"  - Updated publications: {self.stats['updated_publications']}")
+            print(f"  - Total processed: {len(author.publications)}")
+
             if min_year or max_year:
                 year_range = f"from {min_year if min_year else 'earliest'} to {max_year if max_year else 'latest'}"
                 print(f"Filtered to {len(author.publications)} publications {year_range}")
@@ -516,7 +638,7 @@ def main():
     scraper = GoogleScholarScraper(headless=not args.no_headless,
                                    scraperapi_key=args.scraperapi_key,
                                    scraperapi_params=args.scraperapi_params)
-    author = scraper.scrape_profile(args.scholar_id, args.min_year, args.max_year)
+    author = scraper.scrape_profile(args.scholar_id, args.min_year, args.max_year, args.output_dir)
 
     if author and author.publications:
         print("\nAuthor Information:")
