@@ -4,6 +4,7 @@ import re
 import sys
 import json
 import yaml
+import math
 import random
 import argparse
 import pandas as pd
@@ -672,6 +673,27 @@ class HTMLGenerator:
             background-color: #4CAF50; /* Green */
             border: 2px solid #303030; /* Dark border to distinguish from first author */
         }
+
+        .pie-chart-container {
+            display: inline-block;
+            position: relative;
+        }
+
+        .pie-chart-container:hover::after {
+            content: attr(title);
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px;
+            border-radius: 3px;
+            z-index: 100;
+            width: 200px;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 100%;
+            text-align: left;
+            white-space: pre-line;
+        }
         """
 
         with open(self.css_dir / "style.css", 'w') as f:
@@ -969,6 +991,7 @@ class HTMLGenerator:
                         <tr>
                             <th>Name</th>
                             <th style="text-align: center;">Publications<br/>({min_year}-{max_year})</th>
+                            <th style="text-align: center;">Authorship Roles<br/>({min_year}-{max_year})</th>
                             <th style="text-align: center;">Citations<br/>({min_year}-{max_year})</th>
                             <th style="text-align: center;">Avg. Citations<br/>({min_year}-{max_year})</th>
                             <th style="text-align: center;">h-index<br/>({min_year}-{max_year})</th>
@@ -985,10 +1008,14 @@ class HTMLGenerator:
 
         for author_id, author in sorted_authors:
             stats = author_stats[author_id]
+            position_stats = self._calculate_author_position_stats(author_id)
+            role_chart = self._generate_author_role_piechart(position_stats)
+
             html += f"""
                         <tr>
                             <td><a href="authors/{author_id}.html">{author.get('name', 'Unknown')}</a></td>
                             <td style="text-align: center;">{stats['pub_count']}</td>
+                            <td style="text-align: center;">{role_chart}</td>
                             <td style="text-align: center;">{stats['included_citations']}</td>
                             <td style="text-align: center;">{stats['included_citations'] / stats['pub_count']:.1f}</td>
                             <td style="text-align: center;">{stats['included_h_index']}</td>
@@ -1169,6 +1196,129 @@ class HTMLGenerator:
 
         print("Generated index page")
 
+
+    def _calculate_author_position_stats(self, author_id):
+        """Calculate authorship position statistics for an author"""
+        stats = {
+            'first': 0,
+            'last': 0,
+            'middle': 0,
+            'solo': 0,
+            'total': 0
+        }
+
+        # Get publication IDs for this author
+        pub_ids = self.data.author_publications.get(author_id, [])
+
+        for pub_id in pub_ids:
+            if pub_id not in self.data.publications:
+                continue
+
+            pub = self.data.publications[pub_id]
+            author_list = self.data._parse_authors(pub.get('authors', ''))
+
+            if not author_list:
+                continue
+
+            # Find the position of the author in this publication
+            position = self._find_author_position(author_list, author_id)
+
+            if position is None:
+                continue
+
+            stats['total'] += 1
+
+            if len(author_list) == 1:
+                stats['solo'] += 1
+            elif position == 0:
+                stats['first'] += 1
+            elif position == len(author_list) - 1:
+                stats['last'] += 1
+            else:
+                stats['middle'] += 1
+
+        return stats
+
+
+    def _generate_author_role_piechart(self, stats, size=30):
+        """Generate a small SVG pie chart showing author role distribution"""
+        total = stats['total']
+        if total == 0:
+            return '<span>No data</span>'
+
+        # Calculate percentages and angles
+        first_pct = stats['first'] / total * 100
+        last_pct = stats['last'] / total * 100
+        middle_pct = stats['middle'] / total * 100
+        solo_pct = stats['solo'] / total * 100
+
+        # Convert percentages to angles (in radians)
+        first_angle = stats['first'] / total * 2 * 3.14159
+        last_angle = stats['last'] / total * 2 * 3.14159
+        middle_angle = stats['middle'] / total * 2 * 3.14159
+        solo_angle = stats['solo'] / total * 2 * 3.14159
+
+        # Cumulative angles for drawing arcs
+        angles = []
+        cumulative = 0
+
+        for role_angle in [first_angle, last_angle, middle_angle, solo_angle]:
+            if role_angle > 0:
+                angles.append((cumulative, cumulative + role_angle))
+                cumulative += role_angle
+
+        # Center coordinates and radius
+        cx, cy = size/2, size/2
+        radius = size/2 - 2  # Small margin
+
+        # Generate SVG
+        svg = f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" xmlns="http://www.w3.org/2000/svg">'
+
+        # Generate pie slices
+        colors = ['#4CAF50', '#F44336', '#9E9E9E', '#2196F3']  # green, red, gray, blue for first, last, middle, solo
+
+        if total == 0:
+            # If no data, draw an empty circle
+            svg += f'<circle cx="{cx}" cy="{cy}" r="{radius}" fill="#eee" />'
+        else:
+            # Draw pie slices
+            slice_index = 0
+            for role, count in [('first', stats['first']), ('last', stats['last']),
+                             ('middle', stats['middle']), ('solo', stats['solo'])]:
+                if count == 0:
+                    continue
+
+                start_angle, end_angle = angles[slice_index]
+                slice_index += 1
+
+                # Calculate start and end points
+                start_x = cx + radius * math.sin(start_angle)
+                start_y = cy - radius * math.cos(start_angle)
+                end_x = cx + radius * math.sin(end_angle)
+                end_y = cy - radius * math.cos(end_angle)
+
+                # Determine if this slice is more than half the pie
+                large_arc = 1 if (end_angle - start_angle) > 3.14159 else 0
+
+                # Draw the slice
+                color = colors[['first', 'last', 'middle', 'solo'].index(role)]
+
+                if count == total:
+                    # If 100%, just draw a circle
+                    svg += f'<circle cx="{cx}" cy="{cy}" r="{radius}" fill="{color}" />'
+                else:
+                    # Draw a pie slice
+                    svg += f'<path d="M {cx},{cy} L {start_x},{start_y} A {radius},{radius} 0 {large_arc},1 {end_x},{end_y} Z" fill="{color}" />'
+
+        # Close SVG
+        svg += '</svg>'
+
+        # Add tooltip with percentages
+        tooltip = f"First: {first_pct:.1f}%; Last: {last_pct:.1f}%; Middle: {middle_pct:.1f}%; Solo: {solo_pct:.1f}%"
+
+        return f'<div class="pie-chart-container" title="{tooltip}">{svg}</div>'
+
+
     def _find_author_position(self, author_list, author_id):
         """
         Find the position of an author in the author list, considering aliases
@@ -1321,6 +1471,14 @@ class HTMLGenerator:
 
                 # Standardize author name
                 coauthor = ' '.join(p.lower().capitalize() for p in coauthor.split())
+
+                # Author names with '-' character requires a little more attention
+                if '-' in coauthor:
+                    parts = coauthor.split('-')
+                    c = [parts[0]]
+                    for part in parts[1:]:
+                        c.append(part[0].upper() + part[1:])
+                    coauthor = '-'.join(c)
 
                 # Update the counter
                 all_coauthors[coauthor] = all_coauthors.get(coauthor, 0) + 1
