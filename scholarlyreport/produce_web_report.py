@@ -159,12 +159,13 @@ class PublicationData:
         if not journal_name or pd.isna(journal_name):
             return "Unknown"
 
-        # Remove extra whitespace
+        # Remove extra whitespace and normalize to lowercase for cache lookup
         journal_name = journal_name.strip()
+        normalized_key = journal_name.lower()  # Use lowercase version as cache key
 
-        # Check if we've already standardized this journal name
-        if hasattr(self, 'journal_mapping') and journal_name in self.journal_mapping:
-            return self.journal_mapping[journal_name]
+        # Check if we've already standardized this journal name (using normalized key)
+        if hasattr(self, 'journal_mapping') and normalized_key in self.journal_mapping:
+            return self.journal_mapping[normalized_key]
 
         # Split into words
         words = journal_name.split()
@@ -190,10 +191,10 @@ class PublicationData:
         # Now make it prettier
         standardized = standardized.replace(' And ', ' and ').replace(' Of ', ' of ').replace(' In ', ' in ')
 
-        # Store in mapping for future use
+        # Store in mapping for future use (using normalized key)
         if not hasattr(self, 'journal_mapping'):
             self.journal_mapping = {}
-        self.journal_mapping[journal_name] = standardized
+        self.journal_mapping[normalized_key] = standardized  # Use normalized key
 
         return standardized
 
@@ -238,6 +239,11 @@ class PublicationData:
                     # If publication already exists, add this author to it
                     if scholar_id not in self.publications[pub_id]['author_ids']:
                         self.publications[pub_id]['author_ids'].append(scholar_id)
+
+                    # Update journal name if this version is "better" (i.e., not all caps like "FRONTIERS IN MARINE SCIENCE")
+                    existing_journal = self.publications[pub_id]['journal']
+                    if existing_journal.isupper() and not journal_name.isupper():
+                        self.publications[pub_id]['journal'] = journal_name
 
                 # Add to author-publications mapping
                 self.author_publications[scholar_id].append(pub_id)
@@ -1947,74 +1953,6 @@ class HTMLGenerator:
         with open(self.authors_dir / f"{author_id}.html", 'w') as f:
             f.write(html)
 
-    def _generate_journal_page(self):
-        """Generate page with journal statistics"""
-        html = self._page_header("Journal Analysis", active_page="journals")
-
-        journal_stats = self.data.get_journal_stats()
-
-        html += """
-        <div class="container">
-            <div class="card">
-                <h2 class="card-title">Journal Publication Analysis</h2>
-                <p>This page shows statistics about publication venues in this dataset.</p>
-
-                <table id="journals-table" class="display">
-                    <thead>
-                        <tr>
-                            <th>Journal</th>
-                            <th>Publications</th>
-                            <th>Citations</th>
-                            <th>Avg. Citations Per Paper</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        """
-
-        # No longer need to sort here as DataTables will handle sorting
-        for journal in journal_stats:
-            html += f"""
-                        <tr>
-                            <td>{journal['journal']}</td>
-                            <td>{journal['publications']}</td>
-                            <td>{journal['citations']}</td>
-                            <td>{journal['avg_citations']}</td>
-                        </tr>
-            """
-
-        html += """
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        """
-
-        # Add JavaScript to initialize DataTables
-        html += """
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-        <script>
-            $(document).ready(function() {
-                $('#journals-table').DataTable({
-                    "paging": false,
-                    "info": false,
-                    "order": [[1, 'desc']], // Default sort by publications count (desc)
-                    "columnDefs": [
-                        { "type": "num", "targets": [1, 2, 3] } // Numeric sorting for counts and averages
-                    ],
-                    "autoWidth": false,
-                    "scrollX": true      // Add horizontal scrolling if needed
-                });
-            });
-        </script>
-        """
-
-        html += self._page_footer()
-
-        with open(self.output_dir / "journals.html", 'w') as f:
-            f.write(html)
-
-        print("Generated journal analysis page")
 
     def _generate_journal_detail_pages(self):
         """Generate individual pages for each journal showing all publications"""
@@ -2038,7 +1976,7 @@ class HTMLGenerator:
         # Get all publications for this journal
         journal_publications = []
         for pub_id, pub_data in self.data.publications.items():
-            if pub_data.get('journal', 'Unknown') == journal_name:
+            if pub_data.get('journal', 'Unknown').lower() == journal_name.lower():
                 # Get author names for this publication from our dataset
                 dataset_authors = []
                 for author_id in pub_data.get('author_ids', []):
@@ -2066,6 +2004,23 @@ class HTMLGenerator:
                     if pub['pub_data'].get('year') and str(pub['pub_data'].get('year')).isdigit()]
         min_year = min(pub_years) if pub_years else "N/A"
         max_year = max(pub_years) if pub_years else "N/A"
+
+        # Calculate author publication counts for this journal
+        author_pub_counts = {}
+        for pub_info in journal_publications:
+            for author in pub_info['dataset_authors']:
+                author_id = author['id']
+                author_name = author['name']
+                if author_id not in author_pub_counts:
+                    author_pub_counts[author_id] = {
+                        'name': author_name,
+                        'count': 0
+                    }
+                author_pub_counts[author_id]['count'] += 1
+
+        # Sort authors by publication count (highest first)
+        sorted_authors = sorted(author_pub_counts.items(),
+                               key=lambda x: x[1]['count'], reverse=True)
 
         # Generate HTML
         html = self._page_header(f"{journal_name} - Journal Details", active_page="journal_detail")
@@ -2095,7 +2050,19 @@ class HTMLGenerator:
                     </div>
                 </div>
             </div>
+        """
 
+        # Add authors who published in these journals
+        author_pub_counts = ', '.join([f"""<a href="../authors/{author_id}.html">{author_data['name']}</a> (<b>{author_data['count']}</b>)""" for author_id, author_data in sorted_authors])
+        html += f"""
+            <div class="card">
+                <h2 class="card-title">Authors of publications in {journal_name}</h2>
+                <p>{author_pub_counts}.</p>
+            </div>
+        """
+
+        # Add actual publications
+        html += f"""
             <div class="card">
                 <h2 class="card-title">Publications in {journal_name}</h2>
                 <p>Showing all {total_pubs} publications from {self.institute_name} researchers published in this venue:</p>
@@ -2201,9 +2168,9 @@ class HTMLGenerator:
                     <thead>
                         <tr>
                             <th>Journal</th>
-                            <th>Publications</th>
-                            <th>Citations</th>
-                            <th>Avg. Citations Per Paper</th>
+                            <th style="text-align: center;">Publications</th>
+                            <th style="text-align: center;">Citations</th>
+                            <th style="text-align: center;">Avg. Citations Per Paper</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2217,9 +2184,9 @@ class HTMLGenerator:
             html += f"""
                         <tr>
                             <td>{journal['journal']}</td>
-                            <td data-sort="{journal['publications']}"><a href="journals/{safe_filename}.html">{journal['publications']}</a></td>
-                            <td>{journal['citations']}</td>
-                            <td>{journal['avg_citations']}</td>
+                            <td style="text-align: center;" data-sort="{journal['publications']}"><a href="journals/{safe_filename}.html">{journal['publications']}</a></td>
+                            <td style="text-align: center;">{journal['citations']}</td>
+                            <td style="text-align: center;">{journal['avg_citations']}</td>
                         </tr>
             """
 
