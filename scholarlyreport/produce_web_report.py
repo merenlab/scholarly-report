@@ -991,6 +991,7 @@ class HTMLGenerator:
                     <canvas id="citation-trends-chart"></canvas>
                 </div>
                 <div style="clear: both; height: 60px;"></div>
+                <p>Please note that the citation counts will naturally plateau since most recent publications have not been out long enough to be cited from within other work. Thus this pattern alone does not suggest decreasing productivity or impact.
             </div>
 
             <div class="card">
@@ -1793,7 +1794,7 @@ class HTMLGenerator:
         for coauthor_name, pub_count in sorted_all_coauthors:
             html += f"""
                 <tr>
-                    <td>{coauthor_name}</td>
+                    <td><a href="https://www.google.com/search?q={'+'.join(coauthor_name.split())}+scholar" target="_blank">{coauthor_name}</a></td>
                     <td>{pub_count}</td>
                 </tr>
             """
