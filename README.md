@@ -1,12 +1,17 @@
-# Scholarly Reports for Institutes
+# Scholarly Activity Reports for Institutes
 
 This software package is meant to solve a very annoying issue: preparing interactive reports for departments or institutes that are required to collect all the publication information from the members of their workforce during a specific period. By providing a bunch of Google Scholar IDs, you will get from this tool an interactive interface that allows you to track,
 
 * The total number of yearly publications and citations,
-* Collaboration network among scientists through shared co-authorsipts,
+* Collaboration network among scientists through shared co-authorships,
+* Detailed insights into each author and their roles in papers they authored,
 * Journals in which publications appear, etc.
 
-If you run into this software and are interested in using it for your own needs but not sure how to do it, please feel free to reach out to me via meren@hifmb.de and I will help you to setup and deploy it :)
+I created this tool simply because we needed it for a reporting task, and wanted to describe it extensively here so you can use it, too. Please feel free to reach out to me via meren@hifmb.de if you need any help using it, and I will help you to setup and deploy it.
+
+---
+
+Please note that Google does *not* appreciate scraping of the content displayed on their web pages (including Google Scholar), and has implemented many mechanisms to prevent such use of their data. Scraping data for a handful of scientists for non-commercial interests is not the same thing with companies that scrape literally millions of pages for profit. But rules are rules. If you use this program nevertheless to summarize a very large number of profiles, there is a high likelihood that Google will catch you, and stop responding to your requests (which will *only* stop this program to continue working, and will not impact anything else with your relationship with Google services). That said, it is still doable with commercial solutions that can overcome those barriers. I included one of those solutions below in case you are really serious about doing this, but it *will* cost you some money. In my example I used ScraperAPI, but it is way more expensive than some other alternatives. It is likely that I will be the only user of this tool, so I don't want to waste too much time writing about things that other will not need, but if you are reading these lines and feel like this is what you need, let me know, and I will share my 2 cents with you regarding how to generate reports effectively.
 
 # Installation
 
@@ -27,7 +32,7 @@ conda create -y --name scholarly-report python=3.10
 conda activate scholarly-report
 ```
 
-Now you can get a copy of the code, and install it nto this new conda environment:
+Now you can get a copy of the code, and install it into this new conda environment:
 
 ```bash
 # make sure there is an appropriate directory
@@ -57,7 +62,7 @@ conda activate scholarly-report
 
 # Usage
 
-The package does its work in two steps: (1) collecting author data, and (2) generating a report for all authors. The following sections explain the deatils for each step.
+The package does its work in two steps: (1) collecting author data, and (2) generating a report for all authors. The following sections explain the details for each step.
 
 ## Collecting author data
 
@@ -68,7 +73,7 @@ sc-get-author-data GtLLuxoAAAAJ \
                    --output-dir SCHOLARLY_DATA
 ```
 
-But this is rarely useful, since reporting tasks require only a certain period. So you can get publications until a certain year:
+But this is rarely useful, since most reporting tasks require only a certain period, and trying to get all the publications regardless will make Google even more upset. So there are a few ways you can define a particular timeframe you are interested in. For instance, you can get publications until a certain year:
 
 ```bash
 # retrieve information for publications appeared in literature until 2021
@@ -77,7 +82,7 @@ sc-get-author-data GtLLuxoAAAAJ \
                    --output-dir SCHOLARLY_DATA
 ```
 
-Get those only appeared after a certain year:
+Or only those that appeared after a certain year:
 
 ```bash
 # retrieve information for publications appeared in literature after 2023
@@ -86,7 +91,7 @@ sc-get-author-data GtLLuxoAAAAJ \
                    --output-dir SCHOLARLY_DATA
 ```
 
-Or within a period:
+Or those that were published within a period:
 
 ```bash
 # retrieve information for publications appeared in literature after 2023
@@ -96,7 +101,7 @@ sc-get-author-data GtLLuxoAAAAJ \
                    --output-dir SCHOLARLY_DATA
 ```
 
-This will give you publications from this author ONLY in the year 2024:
+Or from a single year (say, 2024):
 
 ```bash
 # retrieve information for publications appeared in literature after 2023
@@ -106,11 +111,25 @@ sc-get-author-data GtLLuxoAAAAJ \
                    --output-dir SCHOLARLY_DATA
 ```
 
-This is handy since some people may have started later than the beginning of the reporting period, so by explicitly defining a window for each author is important for accurate reporting.
+This is handy since some people may have started working at an institution later than the beginning of the reporting period, so by explicitly defining a window for each author could be important for accurate reporting.
 
-Remember, if you do this for many many authors and for many many years, you will eventually get blocked by Google since you are not supposed to scrape their web content just like that. I put a lot of controls for that to _not_ happen (such as random amount of waits between different requests so the program behaves like a normal user and without creating too much strain on poor Google servers), it may still happen, so you should keep an eye on the very useful output messages.
+Remember, if you do this for many many authors and for many many years, you will eventually get blocked by Google since you are not supposed to scrape their web content just like that. I put a lot of controls for that to _not_ happen (such as random amount of waits between different requests so the program behaves like a normal user and without creating too much strain on poor poor Google servers), but it may still happen, so you should keep an eye on the output messages.
 
-Once all authors are done, it is time to generate a report.
+### Using ScraperAPI for reliable data collection
+
+If you're planning to collect data for many authors or experiencing issues with Google Scholar blocking your requests, you can use [ScraperAPI](https://www.scraperapi.com/) to make your data collection more reliable. ScraperAPI provides rotating proxies and handles anti-bot measures automatically.
+
+To use ScraperAPI sign up for a ScraperAPI account at [scraperapi.com](https://www.scraperapi.com/), and get your API key from the dashboard. Once you have your API key, pass it to the program using the `--scraperapi-key` parameter:
+
+```bash
+sc-get-author-data GtLLuxoAAAAJ \
+                   --min-year 2020 \
+                   --max-year 2024 \
+                   --output-dir SCHOLARLY_DATA \
+                   --scraperapi-key "your_api_key_here"
+```
+
+**Note**: ScraperAPI is a paid service. Check their pricing plans to understand the costs. For small-scale usage, the free tier might be sufficient, but for large institutes with many authors, you may need a paid plan.
 
 ## Generating a report
 
@@ -124,20 +143,26 @@ sc-produce-web-report SCHOLARLY_DATA \
                       --institute-name ICBM
 ```
 
-It is important to provide an institute name, otherwise the output will look very ugly.
+It is important to provide a meaningful institute name (that's why if you don't do it, you will get an error).
 
-Another thing that will certainly look ugly will be the _journal names_. Since Google Scholar collects everything, conference abstracts and other irrelevant entries really makes the report look quite crappy. If you want, you can creat a flat text file with 'unwanted journal names', and send it to this program to they are excluded from the reporting:
+Once your report is ready, you can simply open the `index.html` file in your browser. Just to simplify things, you can copy paste this command to your terminal, and copy the output path to your browser window:
 
-```bash
-sc-produce-web-report SCHOLARLY_DATA \
-                      --output-dir SCHOLARLY_REPORT \
-                      --institute-name ICBM \
-                      --exclude-journals JOURNAL-NAMES-TO-EXCLUDE.txt
+```
+ls $(pwd)/SCHOLARLY_REPORT/index.html
 ```
 
-There should be a single journal name in each line of this file, and they don't have to be complete. The code is smart enough to find "2024 Ocean Sciences Meeting" if you only put in "Ocean Sciences Meeting" or "Meeting".
+If you want to be fancier, you can also run a local server in the output directory as such,
 
-So, once the output is ready, you can view it on your computer by first running a local server in the output directory as such,
+```bash
+cd SCHOLARLY_REPORT
+python -m http.server 8000
+```
+
+And then visit this URL on your web browser:
+
+[http://localhost:8000/](http://localhost:8000/)
+
+There are multiple ways you can a local server in the output directory as such,
 
 ```bash
 cd SCHOLARLY_REPORT
@@ -147,6 +172,48 @@ python -m http.server 8000
 And then visiting this URL on your web browser:
 
 [http://localhost:8000/](http://localhost:8000/)
+
+Generating a report and viewing it is this easy. But there are multiple ways you will likely feel the need to improve your output such as by removing some 'journal names' from consideration, and by accommodating authors that appear in publications with multiple names, which are covered in the following sections.
+
+### Journal names to exclude
+
+Since Google Scholar collects everything, conference abstracts and other irrelevant entries really makes the report look quite crappy. To mitigate that you can create a flat text file to list 'unwanted journal names', and exclude them from the reporting using the following parameter:
+
+```bash
+sc-produce-web-report SCHOLARLY_DATA \
+                      --output-dir SCHOLARLY_REPORT \
+                      --institute-name ICBM \
+                      --exclude-journals JOURNAL-NAMES-TO-EXCLUDE.txt
+```
+
+There should be a single journal name in each line of this file, and they don't have to be complete: the code will exclude "2024 Ocean Sciences Meeting" if you only put in "Ocean Sciences Meeting", or simply, "Meeting".
+
+### Authors names to merge
+
+Sometimes authors appear in publications under different name variations for various reasons (e.g., "A Murat Eren", "AM Eren", etc) which kind of ruins the reporting. The author aliases mechanism allows you to group these variations under a single canonical name for cleaner reporting.
+
+To use author aliases and aggregate all versions of author names under a single one you can create a YAML file with author name mappings organized by Google Scholar ID. Here is an example file structure:
+
+```yaml
+GtLLuxoAAAAJ:
+  - "A Murat Eren"
+  - "AM Eren"
+KenJWYwAAAAJ:
+  - "Iliana B Baums"
+  - "IB Baums"
+  - "Iliana Baums"
+```
+
+After saving such a file (e.g., as `AUTHOR-ALIASES.yaml`) in your working directory, you can re-generate your report the following way:
+
+```bash
+sc-produce-web-report SCHOLARLY_DATA \
+                      --output-dir SCHOLARLY_REPORT \
+                      --institute-name ICBM \
+                      --author-aliases AUTHOR-ALIASES.yaml
+```
+
+When provided, the program will use the author aliases file to automatically replace all occurrences of the aliases with the primary name throughout the report, making collaboration networks and author statistics more accurate and cleaner.
 
 ## An example run
 
@@ -179,7 +246,6 @@ Conference Abstracts
 Natur Und Recht
 Oekom
 Cordap
-Society+ Space
 Congresso
 Conference Series
 Agu
@@ -197,68 +263,8 @@ sc-produce-web-report SCHOLARLY_DATA \
                       --institute-name ICBM
 ```
 
-Your web page is ready :) Read below to figure out how to view it.
+## Sharing the report with others
 
-### Upload it to a remote server
-
-The resulting directory is a self-contained web page. If you have a web page, you can upload the content to your web server directly, and visit the relevant URL. When you do that, you will see an interactive web page like this one here:
+The output is a static, self-contained web page, thus you can simply 'zip' the output directory and send it to anyone and instruct them to open the index.html file in their browser. You can also upload the content to your web server directly, and visit the relevant URL. When you do that, you will see an interactive web page like this one here:
 
 [https://merenlab.github.io/scholarly-report/](https://merenlab.github.io/scholarly-report/)
-
-### View it locally
-
-Alternatively, you can run a mini Python web server in your output directory to visualize the contents of it using your browser. For that you can run the following commands:
-
-```bash
-# go into the output directory
-cd SCHOLARLY_REPORT
-
-# run the server
-python -m http.server 8000
-```
-
-Now you can open your browser, and visit the URL [http://localhost:8000/](http://localhost:8000/) on your own computer, and you should see the following sections:
-
-![image](https://github.com/user-attachments/assets/eb3c1fab-635b-4b0f-a06c-ca9f970b000f)
-
-Total number of publications per year:
-
-![image](https://github.com/user-attachments/assets/bf706ffb-632f-440a-81c2-4d7961eda726)
-
-Citation trends for the papers included in this analysis (which depends on the number of Google Scholar profiles and the years of consideration, of course):
-
-![image](https://github.com/user-attachments/assets/f321553d-5acf-4744-8c6d-77d723cd7223)
-
-Co-authorship network resolved from shared publications (lol, Meren):
-
-![image](https://github.com/user-attachments/assets/6c4de736-d6f6-4ef5-b48e-8ad5f2e3624b)
-
-Some overall statistics for everyone considered (for the year period, and lifetime statistics so those who are responsible for reporting can use these data in any way they see fit):
-
-![image](https://github.com/user-attachments/assets/ffb14a4e-513d-4206-8623-a0523099bbd7)
-
-All author names are clickable. When you click one, you see some general statistics:
-
-![image](https://github.com/user-attachments/assets/460a8d6b-fb2d-41fd-b899-33cb36f7dee3)
-
-Publications from the period of interest:
-
-![image](https://github.com/user-attachments/assets/f4b921ee-01a6-453f-a16e-9e7a37c549a3)
-
-Co-authors from that period:
-
-![image](https://github.com/user-attachments/assets/a5692d14-a963-4c7b-87e5-fc56141a7f83)
-
-Personal trends for number of publications and citations:
-
-![image](https://github.com/user-attachments/assets/9d8ebf03-003d-4105-a34d-aa5bd9af21d3)
-
-And where do their publications appear:
-
-![image](https://github.com/user-attachments/assets/57af34ca-23b0-4410-b048-d2481c36c46d)
-
-Then there is the entire 'journals' page:
-
-![image](https://github.com/user-attachments/assets/c3f423f6-02b6-4192-8276-d0a3bc00d11d)
-
-This is a great page to find crappy journal names,  update `JOURNAL-NAMES-TO-EXCLUDE.txt`, and re-run the `sc-produce-web-report` command with the same parameters.
