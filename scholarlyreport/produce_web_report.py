@@ -408,6 +408,9 @@ class HTMLGenerator:
         # Generate journal analysis page
         self._generate_journal_page()
 
+        # Generate individual journal detail pages
+        self._generate_journal_detail_pages()
+
         print("Website generation complete!")
 
     def _create_directories(self):
@@ -2013,11 +2016,254 @@ class HTMLGenerator:
 
         print("Generated journal analysis page")
 
+    def _generate_journal_detail_pages(self):
+        """Generate individual pages for each journal showing all publications"""
+        journal_stats = self.data.get_journal_stats()
+        journals_dir = self.output_dir / "journals"
+        journals_dir.mkdir(exist_ok=True, parents=True)
+
+        print(f"Generating detail pages for {len(journal_stats)} journals...")
+
+        for journal_data in journal_stats:
+            journal_name = journal_data['journal']
+            self._generate_journal_detail_page(journal_name, journals_dir)
+
+        print(f"Generated {len(journal_stats)} journal detail pages")
+
+    def _generate_journal_detail_page(self, journal_name, journals_dir):
+        """Generate a detailed page for a specific journal"""
+        # Create a safe filename
+        safe_filename = self._create_safe_filename(journal_name)
+
+        # Get all publications for this journal
+        journal_publications = []
+        for pub_id, pub_data in self.data.publications.items():
+            if pub_data.get('journal', 'Unknown') == journal_name:
+                # Get author names for this publication from our dataset
+                dataset_authors = []
+                for author_id in pub_data.get('author_ids', []):
+                    if author_id in self.data.authors:
+                        dataset_authors.append({
+                            'id': author_id,
+                            'name': self.data.authors[author_id]['name']
+                        })
+
+                journal_publications.append({
+                    'pub_data': pub_data,
+                    'dataset_authors': dataset_authors
+                })
+
+        # Sort publications by year (newest first), then by citations (highest first)
+        journal_publications.sort(key=lambda x: (-int(x['pub_data'].get('year', 0)), -int(x['pub_data'].get('citations', 0))))
+
+        # Calculate statistics
+        total_pubs = len(journal_publications)
+        total_citations = sum(int(pub['pub_data'].get('citations', 0)) for pub in journal_publications)
+        avg_citations = total_citations / total_pubs if total_pubs > 0 else 0
+
+        # Get year range
+        pub_years = [int(pub['pub_data'].get('year', 0)) for pub in journal_publications
+                    if pub['pub_data'].get('year') and str(pub['pub_data'].get('year')).isdigit()]
+        min_year = min(pub_years) if pub_years else "N/A"
+        max_year = max(pub_years) if pub_years else "N/A"
+
+        # Generate HTML
+        html = self._page_header(f"{journal_name} - Journal Details", active_page="journal_detail")
+
+        html += f"""
+        <div class="container">
+            <div class="card">
+                <h2 class="card-title">{journal_name}</h2>
+                <p><a href="../journals.html">← Back to Journal Analysis</a></p>
+
+                <div class="author-stats">
+                    <div class="stat-box">
+                        <div class="stat-number">{total_pubs}</div>
+                        <div class="stat-label">Publications<br/>({min_year}-{max_year})</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{total_citations}</div>
+                        <div class="stat-label">Total Citations</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{avg_citations:.1f}</div>
+                        <div class="stat-label">Avg. Citations<br/>Per Paper</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{len(set(author['id'] for pub in journal_publications for author in pub['dataset_authors']))}</div>
+                        <div class="stat-label">Authors from<br/>{self.institute_name}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">Publications in {journal_name}</h2>
+                <p>Showing all {total_pubs} publications from {self.institute_name} researchers published in this venue:</p>
+
+                <table id="journal-publications-table" class="display">
+                    <thead>
+                        <tr>
+                            <th>Year</th>
+                            <th>Title</th>
+                            <th>Authors from {self.institute_name}</th>
+                            <th>All Authors</th>
+                            <th style="text-align:center;">Citations</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
+
+        for pub_info in journal_publications:
+            pub = pub_info['pub_data']
+            dataset_authors = pub_info['dataset_authors']
+
+            # Create publication title with link if available
+            pub_url = pub.get('pub_url', '')
+            title_with_link = f"<a href='{pub_url}' target='_blank'>{pub.get('title', 'Unknown Title')}</a>" if pub_url else pub.get('title', 'Unknown Title')
+
+            # Create links to dataset authors
+            dataset_author_links = []
+            for author in dataset_authors:
+                dataset_author_links.append(f"<a href='../authors/{author['id']}.html'>{author['name']}</a>")
+            dataset_authors_str = "; ".join(dataset_author_links) if dataset_author_links else "None"
+
+            # All authors (truncated if too long)
+            all_authors = pub.get('authors', 'Unknown')
+            if len(all_authors) > 200:
+                all_authors = all_authors[:200] + "..."
+
+            year = pub.get('year', '')
+            citations = pub.get('citations', 0)
+
+            html += f"""
+                        <tr>
+                            <td>{year}</td>
+                            <td>{title_with_link}</td>
+                            <td>{dataset_authors_str}</td>
+                            <td><small>{all_authors}</small></td>
+                            <td style="text-align:center;">{citations}</td>
+                        </tr>
+            """
+
+        html += """
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                $('#journal-publications-table').DataTable({
+                    "paging": false,
+                    "info": false,
+                    "order": [[0, 'desc'], [4, 'desc']], // Default sort by year desc, then citations desc
+                    "columnDefs": [
+                        { "type": "html", "targets": [1, 2] }, // For proper sorting of columns with links
+                        { "type": "num", "targets": [0, 4] } // Numeric sorting for year and citations
+                    ],
+                    "autoWidth": false,
+                    "scrollX": true
+                });
+            });
+        </script>
+        """
+
+        html += self._page_footer()
+
+        # Write the file
+        with open(journals_dir / f"{safe_filename}.html", 'w') as f:
+            f.write(html)
+
+    def _create_safe_filename(self, journal_name):
+        """Create a safe filename from journal name"""
+        import re
+        # Remove/replace problematic characters
+        safe_name = re.sub(r'[^\w\s-]', '', journal_name)
+        safe_name = re.sub(r'[-\s]+', '-', safe_name)
+        safe_name = safe_name.strip('-').lower()
+        return safe_name[:50]  # Limit length
+
+    def _generate_journal_page(self):
+        """Generate page with journal statistics"""
+        html = self._page_header("Journal Analysis", active_page="journals")
+
+        journal_stats = self.data.get_journal_stats()
+
+        html += """
+        <div class="container">
+            <div class="card">
+                <h2 class="card-title">Journal Publication Analysis</h2>
+                <p>This page shows statistics about publication venues in this dataset. Click on the publication count to see detailed information about publications in each journal.</p>
+
+                <table id="journals-table" class="display">
+                    <thead>
+                        <tr>
+                            <th>Journal</th>
+                            <th>Publications</th>
+                            <th>Citations</th>
+                            <th>Avg. Citations Per Paper</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
+
+        for journal in journal_stats:
+            # Create safe filename for the detail page
+            safe_filename = self._create_safe_filename(journal['journal'])
+
+
+            html += f"""
+                        <tr>
+                            <td>{journal['journal']}</td>
+                            <td data-sort="{journal['publications']}"><a href="journals/{safe_filename}.html">{journal['publications']}</a></td>
+                            <td>{journal['citations']}</td>
+                            <td>{journal['avg_citations']}</td>
+                        </tr>
+            """
+
+        html += """
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        """
+
+        # Add JavaScript to initialize DataTables
+        html += """
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                $('#journals-table').DataTable({
+                    "paging": false,
+                    "info": false,
+                    "order": [[1, 'desc']],
+                    "columnDefs": [
+                        { "type": "num", "targets": 1 },
+                        { "type": "num", "targets": [2, 3] }
+                    ],
+                    "autoWidth": false,
+                    "scrollX": true
+                });
+            });
+        </script>
+        """
+
+        html += self._page_footer()
+
+        with open(self.output_dir / "journals.html", 'w') as f:
+            f.write(html)
+
+        print("Generated journal analysis page")
+
+
     def _page_header(self, title, active_page="index"):
         """Generate the common header for all pages"""
 
         # Calculate relative path prefix based on active page
-        prefix = '..' if active_page == 'authors' else '.'
+        prefix = '..' if active_page in ['authors', 'journal_detail'] else '.'
 
         return f"""<!DOCTYPE html>
         <html lang="en">
