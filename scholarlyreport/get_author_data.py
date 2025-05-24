@@ -237,7 +237,15 @@ class ExistingDataManager:
         if unique_key in self.existing_publications:
             old_citations = self.existing_publications[unique_key]['citations']
             self.existing_publications[unique_key]['citations'] = new_citations
-            print(f"Updated citations for '{title[:50]}...': {old_citations} -> {new_citations}")
+
+            # Return whether the citation count actually changed
+            if str(old_citations) != str(new_citations):
+                print(f"Updated citations for '{title[:50]}...': {old_citations} -> {new_citations}")
+                return True
+            else:
+                print(f"No citation change for '{title[:50]}...': {old_citations} citations")
+                return False
+        return False
 
 
 class GoogleScholarScraper:
@@ -269,6 +277,7 @@ class GoogleScholarScraper:
         self.stats = {
             'new_publications': 0,
             'updated_publications': 0,
+            'unchanged_publications': 0,
             'skipped_publications': 0
         }
 
@@ -371,7 +380,7 @@ class GoogleScholarScraper:
         except:
             citations, h_index, i10_index = "0", "0", "0"
 
-        print(f"Found profile for: {author_name} (citations: {citations}, h-index: {h_index}")
+        print(f"Found profile for: {author_name} (citations: {citations}, h-index: {h_index})")
 
         return Author(profile_id, author_name, affiliation, citations, h_index, i10_index)
 
@@ -427,10 +436,10 @@ class GoogleScholarScraper:
 
             # Check if this publication already exists
             if data_manager.is_publication_exists(title, journal_name):
-                print(f"Publication already exists: {title[:50]}... - updating citations only")
+                print(f"Publication already exists: {title[:50]}... - checking citations")
 
-                # Update citation count in the data manager
-                data_manager.update_citation_count(title, journal_name, citations)
+                # Update citation count in the data manager and check if it changed
+                citation_changed = data_manager.update_citation_count(title, journal_name, citations)
 
                 # Get existing publication data and create Publication object
                 existing_data = data_manager.get_existing_publication(title, journal_name)
@@ -441,11 +450,16 @@ class GoogleScholarScraper:
                     existing_data['authors'],
                     existing_data['venue'],
                     existing_data['year'],
-                    citations,  # Updated citation count
+                    citations, # Updated citation count
                     existing_data['pub_url']
                 )
 
-                self.stats['updated_publications'] += 1
+                # Update statistics based on whether citation count changed
+                if citation_changed:
+                    self.stats['updated_publications'] += 1
+                else:
+                    self.stats['unchanged_publications'] += 1
+
                 return publication
             else:
                 print(f"New publication found: {title[:50]}... - scraping full details")
@@ -545,7 +559,8 @@ class GoogleScholarScraper:
             # Log results
             print(f"\nScraping Statistics:")
             print(f"  - New publications: {self.stats['new_publications']}")
-            print(f"  - Updated publications: {self.stats['updated_publications']}")
+            print(f"  - Citations updated: {self.stats['updated_publications']}")
+            print(f"  - Unchanged publications: {self.stats['unchanged_publications']}")
             print(f"  - Total processed: {len(author.publications)}")
 
             if min_year or max_year:
