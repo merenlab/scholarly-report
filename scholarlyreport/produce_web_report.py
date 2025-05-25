@@ -1025,7 +1025,7 @@ class HTMLGenerator:
                         <tr>
                             <td><a href="authors/{author_id}.html">{author.get('name', 'Unknown')}</a></td>
                             <td style="text-align: center;">{stats['pub_count']}</td>
-                            <td style="text-align: center;">{role_chart}</td>
+                            <td style="text-align: center;" data-sort="{position_stats['last'] / sum(position_stats.values())}">{role_chart}</td>
                             <td style="text-align: center;">{stats['included_citations']}</td>
                             <td style="text-align: center;">{stats['included_citations'] / stats['pub_count']:.1f}</td>
                             <td style="text-align: center;">{stats['included_h_index']}</td>
