@@ -13,6 +13,12 @@ from pathlib import Path
 from datetime import datetime
 from collections import Counter, defaultdict
 
+# Some global colors for consistency (it is a dumb place to do this but,
+# but it will OK for now).
+first_author_c = '#4CAF50'
+last_author_c = '#F44336'
+middle_author_c = '#DADADA'
+solo_author_c = '#FFBB00'
 
 def load_author_aliases(yaml_file):
     """Load author aliases from a YAML file"""
@@ -667,20 +673,19 @@ class HTMLGenerator:
         }
 
         .first-author {
-            background-color: #4CAF50; /* Green */
+            background-color: """ + first_author_c + """;
         }
 
         .last-author {
-            background-color: #F44336; /* Red */
+            background-color: """ + last_author_c +  """;
         }
 
         .middle-author {
-            background-color: #9E9E9E; /* Gray */
+            background-color: """ + middle_author_c + """;
         }
 
         .solo-author {
-            background-color: #4CAF50; /* Green */
-            border: 2px solid #303030; /* Dark border to distinguish from first author */
+            background-color: """ + solo_author_c + """;
         }
 
         .pie-chart-container {
@@ -1285,7 +1290,7 @@ class HTMLGenerator:
         svg = f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" xmlns="http://www.w3.org/2000/svg">'
 
         # Generate pie slices
-        colors = ['#4CAF50', '#F44336', '#9E9E9E', '#2196F3']  # green, red, gray, blue for first, last, middle, solo
+        colors = [first_author_c, last_author_c, middle_author_c, solo_author_c]
 
         if total == 0:
             # If no data, draw an empty circle
