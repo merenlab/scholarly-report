@@ -18,6 +18,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
 # some dumb cases handled in a dumb way -- Google Scholar
 # reports such weird text for these journals, this had to
@@ -26,6 +27,10 @@ journal_mapping = {'arxiv': 'arXiv',
                    'biorxiv': 'bioRxiv',
                    'medrxiv': 'medRxiv',
                    'g3': 'G3: Genes, Genomes, Genetics'}
+
+class ScholarAccessError(Exception):
+    """Custom exception for when Google Scholar blocks access"""
+    pass
 
 class JournalParser:
     """Handles parsing and cleaning of journal information from Google Scholar"""
@@ -354,21 +359,75 @@ class GoogleScholarScraper:
             print(f"Error accessing URL {url}: {str(e)}")
             return False
 
+    def _check_if_blocked(self):
+        """Check if Google Scholar has blocked access by looking for common blocking indicators"""
+        try:
+            # Check for common blocking messages or CAPTCHA
+            page_source = self.driver.page_source.lower()
+
+            # Common indicators that access is blocked
+            blocking_indicators = [
+                "we're sorry",
+                "unusual traffic",
+                "automated queries",
+                "verify you're not a robot",
+                "our systems have detected"
+            ]
+
+            for indicator in blocking_indicators:
+                if indicator in page_source:
+                    return True
+
+            # Check if the page title indicates an error
+            try:
+                title = self.driver.title.lower()
+                if any(word in title for word in ["error", "blocked", "captcha", "sorry"]):
+                    return True
+            except:
+                pass
+
+            return False
+
+        except Exception:
+            # If we can't check any of these, we shall also assume we might have been blocked
+            # because why not.
+            return True
+
     def _get_author_info(self, profile_id):
         """Extract author information from profile page"""
 
         url = f"https://scholar.google.com/citations?user={profile_id}&hl=en"
 
         # Use the wrapper method to access the URL
-        self._access_url(url, description="author profile", direct_enforced=True)
+        if not self._access_url(url, description="author profile", direct_enforced=True):
+            raise ScholarAccessError(f"Failed to access author profile URL: {url}")
 
-        # Get author name
-        author_name = self.driver.find_element(By.ID, "gsc_prf_in").text.replace('.', '')
+        # Check if we've been blocked
+        if self._check_if_blocked():
+            raise ScholarAccessError("Google Scholar has blocked access. Page contains blocking indicators :/"
+                                     "You can re-run the program with `--no-headless` flag to see the actual "
+                                     "content returned by Google.")
+
+        # Get author name - this is critical, if it fails we should exit
+        try:
+            author_name = self.driver.find_element(By.ID, "gsc_prf_in").text.replace('.', '')
+            if not author_name.strip():
+                raise ScholarAccessError("Author name element found but is empty - likely blocked by Google Scholar. "
+                                         "You can re-run the program with `--no-headless` flag to see the actual "
+                                         "message by Google.")
+        except NoSuchElementException:
+            raise ScholarAccessError("Could not find author name element (ID: gsc_prf_in) - likely blocked by Google Scholar")
+        except Exception as e:
+            raise ScholarAccessError(f"Error extracting author name: {str(e)} - likely blocked by Google Scholar")
 
         # Get affiliation
         try:
             affiliation = self.driver.find_element(By.CLASS_NAME, "gsc_prf_il").text
-        except:
+        except NoSuchElementException:
+            print("Warning: Could not find affiliation element - using 'Not found'")
+            affiliation = "Not found"
+        except Exception as e:
+            print(f"Warning: Error extracting affiliation: {str(e)} - using 'Not found'")
             affiliation = "Not found"
 
         # Get citation statistics
@@ -377,7 +436,8 @@ class GoogleScholarScraper:
             citations = citation_stats[0].text if len(citation_stats) > 0 else "0"
             h_index = citation_stats[2].text if len(citation_stats) > 2 else "0"
             i10_index = citation_stats[4].text if len(citation_stats) > 4 else "0"
-        except:
+        except Exception as e:
+            print(f"Warning: Error extracting citation statistics: {str(e)} - using default values")
             citations, h_index, i10_index = "0", "0", "0"
 
         print(f"Found profile for: {author_name} (citations: {citations}, h-index: {h_index})")
@@ -495,8 +555,15 @@ class GoogleScholarScraper:
             # Access to author page
             result = self._access_url(pub_link, new_window=True, description=description)
             if not result:
-                print(f"Something bad happened while trying to acess to '{pub_link}' :(")
-                sys.exit(-1)
+                raise ScholarAccessError(f"Failed to access publication detail page: {pub_link}")
+
+            # Check if we've been blocked on the publication page
+            if self._check_if_blocked():
+                # Close any open windows before raising error
+                if len(self.driver.window_handles) > 1:
+                    self.driver.close()
+                    self.driver.switch_to.window(self.driver.window_handles[0])
+                raise ScholarAccessError("Google Scholar has blocked access to publication detail page")
 
             try:
                 # Try to find the full author list in the popup
@@ -516,6 +583,9 @@ class GoogleScholarScraper:
             self.driver.close()
             self.driver.switch_to.window(self.driver.window_handles[0])
 
+        except ScholarAccessError:
+            # Re-raise ScholarAccessError to propagate blocking detection
+            raise
         except Exception as e:
             print(f"Error accessing publication details: {e}")
             # If there are multiple windows open, make sure we get back to the main one
@@ -532,7 +602,7 @@ class GoogleScholarScraper:
             # Initialize data manager to handle existing publications
             data_manager = ExistingDataManager(output_dir, profile_id)
 
-            # Get author information
+            # Get author information - this will raise ScholarAccessError if blocked
             author = self._get_author_info(profile_id)
             author.set_year_filters(min_year, max_year)
 
@@ -569,6 +639,11 @@ class GoogleScholarScraper:
 
             return author
 
+        except ScholarAccessError as e:
+            print(f"\nERROR: {str(e)}")
+            print("This usually means Google Scholar has detected automated access and blocked the request.")
+            print("Try using a ScraperAPI key or waiting before retrying.")
+            raise
         except Exception as e:
             print(f"Error during scraping: {str(e)}")
             traceback.print_exc()
@@ -653,21 +728,30 @@ def main():
     scraper = GoogleScholarScraper(headless=not args.no_headless,
                                    scraperapi_key=args.scraperapi_key,
                                    scraperapi_params=args.scraperapi_params)
-    author = scraper.scrape_profile(args.scholar_id, args.min_year, args.max_year, args.output_dir)
 
-    if author and author.publications:
-        print("\nAuthor Information:")
-        for key, value in author.to_dict().items():
-            print(f"{key}: {value}")
+    try:
+        author = scraper.scrape_profile(args.scholar_id, args.min_year, args.max_year, args.output_dir)
 
-        print(f"\nFound {len(author.publications)} publications")
+        if author and author.publications:
+            print("\nAuthor Information:")
+            for key, value in author.to_dict().items():
+                print(f"{key}: {value}")
 
-        # Save data
-        ScholarDataManager.save_author_info(author, args.output_dir)
-        ScholarDataManager.save_publications(author, args.output_dir)
-        return 0
-    else:
-        print("Failed to retrieve data")
+            print(f"\nFound {len(author.publications)} publications")
+
+            # Save data
+            ScholarDataManager.save_author_info(author, args.output_dir)
+            ScholarDataManager.save_publications(author, args.output_dir)
+            return 0
+        else:
+            print("Failed to retrieve data")
+            return 1
+    except ScholarAccessError:
+        # ScholarAccessError already prints detailed error message
+        return 1
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        traceback.print_exc()
         return 1
 
 
