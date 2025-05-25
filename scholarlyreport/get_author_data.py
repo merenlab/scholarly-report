@@ -245,10 +245,10 @@ class ExistingDataManager:
 
             # Return whether the citation count actually changed
             if str(old_citations) != str(new_citations):
-                print(f"Updated citations for '{title[:50]}...': {old_citations} -> {new_citations}")
+                print(f"Updated citations for '{title[:75]}...': {old_citations} -> {new_citations}")
                 return True
             else:
-                print(f"No citation change for '{title[:50]}...': {old_citations} citations")
+                print(f"No citation change for '{title[:75]}...': {old_citations} citations")
                 return False
         return False
 
@@ -318,15 +318,16 @@ class GoogleScholarScraper:
 
         return api_url
 
-    def _access_url(self, url, new_window=False, description="", direct_enforced=False):
+    def _access_url(self, url, new_window=False, description="", direct_enforced=False, omit_terminal_message=False):
         """Wrapper method to access a URL using either direct access or ScraperAPI"""
 
         try:
             # Log the access attempt
-            if description:
-                print(f"Accessing {description}")
-            else:
-                print(f"Accessing URL: {url}")
+            if not omit_terminal_message:
+                if description:
+                    print(f"Accessing {description}")
+                else:
+                    print(f"Accessing URL: {url}")
 
             # Get the appropriate URL (ScraperAPI or direct)
             if not direct_enforced:
@@ -452,7 +453,7 @@ class GoogleScholarScraper:
             try:
                 show_more = self.wait.until(EC.element_to_be_clickable((By.ID, "gsc_bpf_more")))
                 show_more.click()
-                print(" - Clicked 'Show More'")
+                print(" - Clicked 'Show More' button")
                 time.sleep(3)
                 show_more_attempts += 1
             except Exception as e:
@@ -478,12 +479,12 @@ class GoogleScholarScraper:
 
             # Skip if year is not a valid digit or outside filter range
             if not year.isdigit():
-                print(f"Skipping publication with invalid year ('{year}'): {title[:30]}...")
+                print(f"Skipping pub with invalid year ('{year}'): {title[:75]}...")
                 return None
 
             if ((author.min_year_filter and int(year) < author.min_year_filter) or
                 (author.max_year_filter and int(year) > author.max_year_filter)):
-                print(f"Skipping publication from {year} (outside year range): {title[:30]}...")
+                print(f"Skipping pub from {year}: {title[:75]}...")
                 return None
 
             # Get citation count
@@ -496,7 +497,7 @@ class GoogleScholarScraper:
 
             # Check if this publication already exists
             if data_manager.is_publication_exists(title, journal_name):
-                print(f"Publication already exists: {title[:50]}... - checking citations")
+                print(f"Known pub: {title[:75]}... - checking citations")
 
                 # Update citation count in the data manager and check if it changed
                 citation_changed = data_manager.update_citation_count(title, journal_name, citations)
@@ -522,7 +523,7 @@ class GoogleScholarScraper:
 
                 return publication
             else:
-                print(f"New publication found: {title[:50]}... - scraping full details")
+                print(f"New publication found: {title[:75]}... - recovering full details")
 
                 # This is a new publication, get full details
                 full_authors = authors_venue
@@ -550,10 +551,8 @@ class GoogleScholarScraper:
         full_authors = default_authors
 
         try:
-            description = f"publication details for: {title[:30]}..."
-
-            # Access to author page
-            result = self._access_url(pub_link, new_window=True, description=description)
+            # Access to publication page
+            result = self._access_url(pub_link, new_window=True, omit_terminal_message=True)
             if not result:
                 raise ScholarAccessError(f"Failed to access publication detail page: {pub_link}")
 
@@ -577,7 +576,7 @@ class GoogleScholarScraper:
                 if alternative_authors and len(alternative_authors) > 0:
                     full_authors = alternative_authors[0].text
             except Exception as e:
-                print(f"Could not find full details in popup: {e}")
+                print(f" - Could not find full details in popup: {e}")
 
             # Close the publication window and switch back to the main window
             self.driver.close()
