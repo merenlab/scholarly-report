@@ -105,7 +105,6 @@ class PublicationData:
                     'publication_count': row.get('publication_count', 0),
                     'scholar_id': scholar_id
                 }
-                print(f"Loaded author: {self.authors[scholar_id]['name']}")
         except Exception as e:
             print(f"Error loading author info from {info_file}: {str(e)}")
 
@@ -254,7 +253,7 @@ class PublicationData:
                 # Add to author-publications mapping
                 self.author_publications[scholar_id].append(pub_id)
 
-            print(f"Loaded {len(pubs_df) - excluded_pubs_count} publications for {scholar_id} (excluded {excluded_pubs_count})")
+            print(f" - {self.authors[scholar_id]['name'] + ' ':.<30} : Loaded {len(pubs_df) - excluded_pubs_count} pubs (after excluding {excluded_pubs_count})")
 
         except Exception as e:
             print(f"Error loading publications from {pub_file}: {str(e)}")
@@ -887,7 +886,7 @@ class HTMLGenerator:
         with open(self.js_dir / "network.js", 'w') as f:
             f.write(network_js)
 
-        print("Generated CSS and JavaScript assets")
+        print(" - Generated CSS and JavaScript assets")
 
     def _generate_data_files(self):
         """Generate JSON data files for visualizations"""
@@ -901,7 +900,7 @@ class HTMLGenerator:
         with open(self.data_dir / "journals.json", 'w') as f:
             json.dump(journal_stats, f, indent=2)
 
-        print("Generated data files")
+        print(" - Generated data files")
 
     def _generate_index_page(self):
         """Generate the index page with network visualization"""
@@ -1209,7 +1208,7 @@ class HTMLGenerator:
         with open(self.output_dir / "index.html", 'w') as f:
             f.write(html)
 
-        print("Generated index page")
+        print(" - Generated index page")
 
 
     def _calculate_author_position_stats(self, author_id):
@@ -1384,7 +1383,7 @@ class HTMLGenerator:
         for author_id, author_data in self.data.authors.items():
             self._generate_author_page(author_id, author_data)
 
-        print(f"Generated {len(self.data.authors)} author pages")
+        print(f" - Generated {len(self.data.authors)} author pages")
 
     def _generate_author_page(self, author_id, author_data):
         """Generate page for a single author"""
@@ -1790,7 +1789,7 @@ class HTMLGenerator:
                 <thead>
                     <tr>
                         <th>Co-Author Name</th>
-                        <th>Number of Publications</th>
+                        <th style="text-align: center;">Number of Publications</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1800,7 +1799,7 @@ class HTMLGenerator:
             html += f"""
                 <tr>
                     <td><a href="https://www.google.com/search?q={'+'.join(coauthor_name.split())}+scholar" target="_blank">{coauthor_name}</a></td>
-                    <td>{pub_count}</td>
+                    <td style="text-align: center;">{pub_count}</td>
                 </tr>
             """
 
@@ -1966,13 +1965,13 @@ class HTMLGenerator:
         journals_dir = self.output_dir / "journals"
         journals_dir.mkdir(exist_ok=True, parents=True)
 
-        print(f"Generating detail pages for {len(journal_stats)} journals...")
+        print(f" - Generating detail pages for {len(journal_stats)} journals...")
 
         for journal_data in journal_stats:
             journal_name = journal_data['journal']
             self._generate_journal_detail_page(journal_name, journals_dir)
 
-        print(f"Generated {len(journal_stats)} journal detail pages")
+        print(f" - Generated {len(journal_stats)} journal detail pages")
 
     def _generate_journal_detail_page(self, journal_name, journals_dir):
         """Generate a detailed page for a specific journal"""
@@ -2229,7 +2228,7 @@ class HTMLGenerator:
         with open(self.output_dir / "journals.html", 'w') as f:
             f.write(html)
 
-        print("Generated journal analysis page")
+        print(" - Generated journal analysis page")
 
 
     def _page_header(self, title, active_page="index"):
@@ -2316,8 +2315,7 @@ def main():
     generator = HTMLGenerator(data, args.output_dir, args.institute_name, author_aliases=author_aliases)
     generator.generate_site()
 
-    print(f"Visualization generated in {args.output_dir}")
-    print(f"Open {args.output_dir}/index.html in your web browser to view the network.")
+    print(f"\nOpen {args.output_dir}/index.html in your web browser to view the report.")
 
     return 0
 
