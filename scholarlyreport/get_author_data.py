@@ -18,7 +18,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.common.exceptions import NoSuchElementException
 
 # some dumb cases handled in a dumb way -- Google Scholar
 # reports such weird text for these journals, this had to
@@ -457,7 +457,8 @@ class GoogleScholarScraper:
                 time.sleep(3)
                 show_more_attempts += 1
             except Exception as e:
-                print(f"Profile page is fully loaded!")
+                len(e)
+                print("Profile page is fully loaded!")
                 break
 
     def _get_publication_details(self, pub_element, author, i, total_count, data_manager):
@@ -626,7 +627,7 @@ class GoogleScholarScraper:
                     author.add_publication(publication)
 
             # Log results
-            print(f"\nScraping Statistics:")
+            print("\nScraping Statistics:")
             print(f"  - New publications: {self.stats['new_publications']}")
             print(f"  - Citations updated: {self.stats['updated_publications']}")
             print(f"  - Unchanged publications: {self.stats['unchanged_publications']}")
@@ -716,10 +717,11 @@ def main():
     print()
     print("############################################################################################")
     print(f"Starting Google Scholar scraping for ID: {args.scholar_id}{year_coverage}")
+    print(f"Google Scholar profile: https://scholar.google.com/citations?user={args.scholar_id}")
     if args.scraperapi_key:
-        print(f"Using ScraperAPI for web access")
+        print("Using ScraperAPI for web access")
     else:
-        print(f"Using direct web access (these requests may be blocked by Google)")
+        print("Using direct web access (these requests may be blocked by Google)")
     print("############################################################################################")
     print()
 
