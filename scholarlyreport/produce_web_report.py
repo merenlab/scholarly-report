@@ -129,6 +129,11 @@ class PublicationData:
             if primary_name == name_norm:
                 return True
 
+        # check "A Name" cases for "Author Name""
+        abbreviated_name_norm = primary_name.split(' ')[0][0] + ' ' + ' '.join(primary_name.split(' ')[1:])
+        if len(name_norm.split(' ')[0]) == 1 and name_norm == abbreviated_name_norm:
+                return True
+
         # Check if scholar_id is in aliases and if the name matches any alias
         if scholar_id in self.author_aliases:
             for alias in self.author_aliases[scholar_id]:
