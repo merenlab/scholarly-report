@@ -123,14 +123,19 @@ class PublicationData:
         # Normalize the name (lowercase, strip whitespace, normalize spacing)
         name_norm = ' '.join(name.lower().split())
 
+        #  Standardize all the dumb dashes
+        name_norm = self._standardize_name_dashes(name_norm)
+
         # Check if name matches the primary name in our dataset
         if scholar_id in self.authors:
             primary_name = ' '.join(self.authors[scholar_id]['name'].lower().split())
+            primary_name = self._standardize_name_dashes(primary_name)
             if primary_name == name_norm:
                 return True
 
         # check "A Name" cases for "Author Name""
         abbreviated_name_norm = primary_name.split(' ')[0][0] + ' ' + ' '.join(primary_name.split(' ')[1:])
+        abbreviated_name_norm = self._standardize_name_dashes(abbreviated_name_norm)
         if len(name_norm.split(' ')[0]) == 1 and name_norm == abbreviated_name_norm:
                 return True
 
@@ -138,19 +143,23 @@ class PublicationData:
         if scholar_id in self.author_aliases:
             for alias in self.author_aliases[scholar_id]:
                 alias_norm = ' '.join(alias.lower().split())
-                if alias_norm == name_norm:
+                abbreviated_alias_norm = alias_norm.split(' ')[0][0] + ' ' + ' '.join(alias_norm.split(' ')[1:])
+                alias_norm = self._standardize_name_dashes(alias_norm)
+                abbreviated_alias_norm = self._standardize_name_dashes(abbreviated_alias_norm)
+                if alias_norm == name_norm or abbreviated_alias_norm == name_norm:
                     return True
 
         return False
 
 
+    def _standardize_name_dashes(self, name):
+        # This is extremely annoying, but necessary :/ We have different kinds of
+        # dashes all around (which I didn't know before), which caused a lot of issues
+        # downstream with name comparisons. So here is a dumb function that will
+        # replace any known dash variants with a standard "-"
+        dash_variants = '[\u2010\u2011\u2012\u2013\u2014\u2212\uFE58\uFE63\uFF0D]'
+        return re.sub(dash_variants, '-', name)
 
-        # Also check against the author's name in our dataset
-        if scholar_id in self.authors:
-            if self.authors[scholar_id]['name'].lower() == name_lower:
-                return True
-
-        return False
 
     def _standardize_journal_name(self, journal_name):
         """Standardize journal name to fix capitalization and other inconsistencies"""
