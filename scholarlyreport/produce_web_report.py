@@ -1024,12 +1024,13 @@ class HTMLGenerator:
             stats = author_stats[author_id]
             position_stats = self._calculate_author_position_stats(author_id)
             role_chart = self._generate_author_role_piechart(position_stats)
+            pct_last_author = (position_stats['last'] / sum(position_stats.values())) if sum(position_stats.values()) > 0 else 0
 
             html += f"""
                         <tr>
                             <td><a href="authors/{author_id}.html">{author.get('name', 'Unknown')}</a></td>
                             <td style="text-align: center;">{stats['pub_count']}</td>
-                            <td style="text-align: center;" data-sort="{position_stats['last'] / sum(position_stats.values())}">{role_chart}</td>
+                            <td style="text-align: center;" data-sort="{pct_last_author}">{role_chart}</td>
                             <td style="text-align: center;">{stats['included_citations']}</td>
                             <td style="text-align: center;">{stats['included_citations'] / stats['pub_count']:.1f}</td>
                             <td style="text-align: center;">{stats['included_h_index']}</td>
