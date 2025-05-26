@@ -125,8 +125,7 @@ class Publication:
 class Author:
     """Represents a Google Scholar author profile"""
 
-    def __init__(self, profile_id, name, affiliation="Unknown",
-                 citations="0", h_index="0", i10_index="0"):
+    def __init__(self, profile_id, name, affiliation="Unknown", citations="0", h_index="0", i10_index="0"):
         self.profile_id = profile_id
         self.name = name
         self.affiliation = affiliation
@@ -456,8 +455,7 @@ class GoogleScholarScraper:
                 print(" - Clicked 'Show More' button")
                 time.sleep(3)
                 show_more_attempts += 1
-            except Exception as e:
-                len(e)
+            except Exception:
                 print("Profile page is fully loaded!")
                 break
 
