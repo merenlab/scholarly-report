@@ -143,19 +143,7 @@ class PublicationData:
 
         return False
 
-    def _is_author_match(self, name, scholar_id):
-        """Check if a name matches any alias for the given scholar ID"""
-        if not name or not scholar_id:
-            return False
 
-        # Convert to lowercase for case-insensitive matching
-        name_lower = name.lower()
-
-        # Check if scholar_id is in aliases and if the name matches any alias
-        if scholar_id in self.author_aliases:
-            for alias in self.author_aliases[scholar_id]:
-                if alias.lower() == name_lower:
-                    return True
 
         # Also check against the author's name in our dataset
         if scholar_id in self.authors:
@@ -1361,27 +1349,6 @@ class HTMLGenerator:
 
         # If we got here, no match was found
         return None
-
-    def _is_author_match(self, name, author_id):
-        """Check if a name matches any alias for the given author ID"""
-        if not name or not author_id:
-            return False
-
-        # Convert to lowercase for case-insensitive matching
-        name_lower = name.lower()
-
-        # First check if the exact name from our authors dataset matches
-        if author_id in self.data.authors:
-            if self.data.authors[author_id]['name'].lower() == name_lower:
-                return True
-
-        # Then check against aliases if provided
-        if self.author_aliases and author_id in self.author_aliases:
-            for alias in self.author_aliases[author_id]:
-                if alias.lower() == name_lower:
-                    return True
-
-        return False
 
 
     def _generate_author_pages(self):
