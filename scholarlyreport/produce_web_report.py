@@ -546,7 +546,7 @@ class HTMLGenerator:
 
         .network-container {
             width: 100%;
-            height: 600px;
+            height: 900px;
             border: 1px solid #ddd;
             margin-bottom: 20px;
             overflow: hidden;
@@ -764,7 +764,7 @@ class HTMLGenerator:
 
                 // Create a force simulation with modified parameters
                 const simulation = d3.forceSimulation(data.nodes)
-                    .force("link", d3.forceLink(data.links).id(d => d.id).distance(100))
+                    .force("link", d3.forceLink(data.links).id(d => d.id).distance(200))
                     .force("charge", d3.forceManyBody().strength(-300))
                     .force("center", d3.forceCenter(width / 2, height / 2))
                     .force("collision", d3.forceCollide().radius(d => computeNodeRadius(d) + 15))  // Increased collision radius
@@ -792,9 +792,9 @@ class HTMLGenerator:
                             .duration(200)
                             .style("opacity", .9);
                         tooltip.html(`<strong>${d.name}</strong><br>
-                                    Publications: ${d.publications}<br>
-                                    Citations: ${d.citations}<br>
-                                    h-index: ${d.h_index}`)
+                                    Lifetime publications: ${d.publications}<br>
+                                    Lifetime Citations: ${d.citations}<br>
+                                    Lifetime h-index: ${d.h_index}`)
                             .style("left", (event.pageX + 10) + "px")
                             .style("top", (event.pageY - 28) + "px");
                     })
