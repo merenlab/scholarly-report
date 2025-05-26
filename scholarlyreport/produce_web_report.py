@@ -830,11 +830,11 @@ class HTMLGenerator:
 
                 // Create a force simulation with modified parameters
                 const simulation = d3.forceSimulation(data.nodes)
-                    .force("link", d3.forceLink(data.links).id(d => d.id).distance(200))
-                    .force("charge", d3.forceManyBody().strength(-300))
+                    .force("link", d3.forceLink(data.links).id(d => d.id).distance(d => Math.max(100, 300 - (d.weight * 15))))
+                    .force("charge", d3.forceManyBody().strength(-500))
                     .force("center", d3.forceCenter(width / 2, height / 2))
-                    .force("collision", d3.forceCollide().radius(d => computeNodeRadius(d) + 15))  // Increased collision radius
-                    .force("positioning", positioning);  // Added positioning force
+                    .force("collision", d3.forceCollide().radius(d => computeNodeRadius(d) + 15))
+                    .force("positioning", positioning);
 
                 // Create the links
                 const link = svg.append("g")
@@ -842,7 +842,7 @@ class HTMLGenerator:
                     .data(data.links)
                     .enter().append("line")
                     .attr("stroke", "#999")
-                    .attr("stroke-opacity", 0.6)
+                    .attr("stroke-opacity", d => Math.min(0.95, 0.1 + (d.weight * 0.2)))
                     .attr("stroke-width", d => Math.sqrt(d.weight) * 1.5);
 
                 // Create the nodes
@@ -873,15 +873,26 @@ class HTMLGenerator:
                         window.location.href = `authors/${d.id}.html`;
                     });
 
-                // Add node labels
-                const label = svg.append("g")
-                    .selectAll("text")
+                // Add node labels with background
+                const labelGroup = svg.append("g")
+                    .selectAll("g")
                     .data(data.nodes)
-                    .enter().append("text")
+                    .enter().append("g")
+                    .style("pointer-events", "none");
+
+                // Add background rectangles
+                labelGroup.append("rect")
+                    .attr("fill", "white")
+                    .attr("opacity", 0.6)
+                    .attr("rx", 2) // rounded corners
+                    .attr("ry", 2);
+
+                // Add text labels
+                const label = labelGroup.append("text")
                     .attr("font-size", 12)
-                    .attr("dx", d => computeNodeRadius(d) + 5)  // Position label based on node size
+                    .attr("dx", d => computeNodeRadius(d) + 5)
                     .attr("dy", ".35em")
-                    .text(d => d.name)
+                    .text(d => d.name.split(' ').pop())
                     .style("pointer-events", "none");
 
                 // Add simulation ticking with boundary constraints
@@ -899,10 +910,20 @@ class HTMLGenerator:
                         .attr("cy", d => d.y = Math.max(padding + computeNodeRadius(d),
                                             Math.min(height - padding - computeNodeRadius(d), d.y)));
 
-                    // Position labels with the node
-                    label
-                        .attr("x", d => d.x)
-                        .attr("y", d => d.y);
+                // Position labels with the node
+                label
+                    .attr("x", d => d.x)
+                    .attr("y", d => d.y);
+
+                // Position and size background rectangles
+                labelGroup.selectAll("rect")
+                    .attr("x", d => d.x + computeNodeRadius(d) + 3)
+                    .attr("y", d => d.y - 8)
+                    .attr("width", function(d) {
+                        const textWidth = d.name.split(' ').pop().length * 7; // approximate width
+                        return textWidth + 4;
+                    })
+                    .attr("height", 16);
                 });
 
                 // Helper function to compute node radius based on publications
