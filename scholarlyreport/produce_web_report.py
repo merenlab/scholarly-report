@@ -62,6 +62,130 @@ class PublicationData:
                 self.excluded_journals.append(journal.lower())
             print(f"Excluding {len(self.excluded_journals)} journals...")
 
+    def _check_author_in_publication(self, scholar_id, author_string):
+        """
+        Check if any alias for the given author appears in the publication's author string
+
+        Args:
+            scholar_id: The scholar ID to check
+            author_string: The full author string from the publication
+
+        Returns:
+            bool: True if author is found in the publication, False otherwise
+        """
+        if not author_string or pd.isna(author_string):
+            return False
+
+        # Parse the author string into individual names
+        author_list = self._parse_authors(author_string)
+
+        # Check if any name in the author list matches this author
+        for name in author_list:
+            if self.is_author_match(name, scholar_id):
+                return True
+
+        # If we are here it means neither the author name, nor any of the author
+        # aliases matched to the name of the author. Let's get a little more creative,
+        # and assume that if the author listed this work in their profile, then it is
+        # likely this is their work, but somehow we're missing something simple. Here
+        # we will compare only the last names, and if there is a match, we will go with
+        # it
+        author_last_name = self.authors[scholar_id]['name'].lower().split()[-1]
+        author_last_name = self._standardize_name_dashes(author_last_name)
+        for last_name in [n.lower().split()[-1] for n in author_list]:
+            if author_last_name == last_name:
+                return True
+
+        return False
+
+    def _load_publications(self, pub_file):
+        """Load publications for a single author"""
+        try:
+            pubs_df = pd.read_csv(pub_file, sep='\t')
+            if pubs_df.empty:
+                return
+
+            scholar_id = pubs_df['scholar_id'].iloc[0]
+            excluded_pubs_count = 0
+            excluded_author_mismatch_count = 0
+            excluded_author_mismatch_details = []
+
+            # Process each publication
+            for _, pub in pubs_df.iterrows():
+                # get standardized journal name here before its too late
+                journal_name = self._standardize_journal_name(pub.get('journal', ''))
+
+                # skip if this journal is in the excluded list
+                if self._is_journal_to_be_excluded(journal_name):
+                    excluded_pubs_count += 1
+                    continue
+
+                # NEW: Check if the author actually appears in the publication's author list
+                if not self._check_author_in_publication(scholar_id, pub.get('authors', '')):
+                    excluded_author_mismatch_count += 1
+                    excluded_author_mismatch_details.append({
+                        'title': pub.get('title', 'Unknown Title'),
+                        'authors': pub.get('authors', 'Unknown Authors'),
+                        'year': pub.get('year', 'Unknown Year')
+                    })
+                    continue
+
+                pub_id = self._generate_publication_id(pub)
+
+                # Store in publications dict if not already there
+                if pub_id not in self.publications:
+                    self.publications[pub_id] = {
+                        'title': pub['title'],
+                        'authors': pub['authors'],
+                        'author_list': self._parse_authors(pub['authors']),
+                        'venue': pub.get('venue', ''),
+                        'journal': journal_name,
+                        'volume': pub.get('volume', ''),
+                        'issue': pub.get('issue', ''),
+                        'year': int(pub['year']) if str(pub['year']).isdigit() else 0,
+                        'citations': int(pub['citations']) if str(pub['citations']).isdigit() else 0,
+                        'pub_url': pub.get('pub_url', ''),
+                        'author_ids': [scholar_id]  # List of author IDs from our dataset
+                    }
+                else:
+                    # If publication already exists, add this author to it
+                    if scholar_id not in self.publications[pub_id]['author_ids']:
+                        self.publications[pub_id]['author_ids'].append(scholar_id)
+
+                    # Update journal name if this version is "better" (i.e., not all caps like "FRONTIERS IN MARINE SCIENCE")
+                    existing_journal = self.publications[pub_id]['journal']
+                    if existing_journal.isupper() and not journal_name.isupper():
+                        self.publications[pub_id]['journal'] = journal_name
+
+                # Add to author-publications mapping
+                self.author_publications[scholar_id].append(pub_id)
+
+            # Print summary with details about excluded publications
+            author_name = self.authors.get(scholar_id, {}).get('name', 'Unknown Author')
+            total_processed = len(pubs_df) - excluded_pubs_count - excluded_author_mismatch_count
+
+            author_info = f"{author_name} ({scholar_id})"
+            print(f"\n - {author_info + ' ':.<60} : Loaded {total_processed} pubs", end="")
+
+            if excluded_pubs_count > 0 or excluded_author_mismatch_count > 0:
+                exclusion_details = []
+                if excluded_pubs_count > 0:
+                    exclusion_details.append(f"{excluded_pubs_count} excluded as they occurred in excluded journals")
+                if excluded_author_mismatch_count > 0:
+                    exclusion_details.append(f"{excluded_author_mismatch_count} excluded due to author mismatch")
+                print(f" ({', '.join(exclusion_details)})")
+            else:
+                print()
+
+            # Print details of author mismatch exclusions if any
+            if excluded_author_mismatch_details:
+                print("   └─ Publications excluded due to author mismatch (if excluded mistakenly, update the AUTHOR ALIASES file):")
+                for detail in excluded_author_mismatch_details:
+                    print(f"      • A {detail['year']} paper with authors: {detail['authors']}")
+
+        except Exception as e:
+            print(f"Error loading publications from {pub_file}: {str(e)}")
+
     def load_data(self):
         """Load all author and publication data from the directory"""
         print(f"Loading data from {self.data_dir}")
@@ -76,11 +200,11 @@ class PublicationData:
 
         print(f"Found {len(info_files)} author info files and {len(pub_files)} publication files")
 
-        # Load author info
+        # Load author info first (needed for author matching)
         for info_file in info_files:
             self._load_author_info(info_file)
 
-        # Load publications
+        # Load publications (now with author matching)
         for pub_file in pub_files:
             self._load_publications(pub_file)
 
@@ -130,14 +254,15 @@ class PublicationData:
         if scholar_id in self.authors:
             primary_name = ' '.join(self.authors[scholar_id]['name'].lower().split())
             primary_name = self._standardize_name_dashes(primary_name)
+
             if primary_name == name_norm:
                 return True
 
-        # check "A Name" cases for "Author Name""
-        abbreviated_name_norm = primary_name.split(' ')[0][0] + ' ' + ' '.join(primary_name.split(' ')[1:])
-        abbreviated_name_norm = self._standardize_name_dashes(abbreviated_name_norm)
-        if len(name_norm.split(' ')[0]) == 1 and name_norm == abbreviated_name_norm:
-                return True
+            # While at it, check "A Name" cases for "Author Name" quickly
+            abbreviated_name_norm = primary_name.split(' ')[0][0] + ' ' + ' '.join(primary_name.split(' ')[1:])
+            abbreviated_name_norm = self._standardize_name_dashes(abbreviated_name_norm)
+            if len(name_norm.split(' ')[0]) == 1 and name_norm == abbreviated_name_norm:
+                    return True
 
         # Check if scholar_id is in aliases and if the name matches any alias
         if scholar_id in self.author_aliases:
@@ -151,7 +276,6 @@ class PublicationData:
 
         return False
 
-
     def _standardize_name_dashes(self, name):
         # This is extremely annoying, but necessary :/ We have different kinds of
         # dashes all around (which I didn't know before), which caused a lot of issues
@@ -159,7 +283,6 @@ class PublicationData:
         # replace any known dash variants with a standard "-"
         dash_variants = '[\u2010\u2011\u2012\u2013\u2014\u2212\uFE58\uFE63\uFF0D]'
         return re.sub(dash_variants, '-', name)
-
 
     def _standardize_journal_name(self, journal_name):
         """Standardize journal name to fix capitalization and other inconsistencies"""
@@ -205,62 +328,6 @@ class PublicationData:
 
         return standardized
 
-    def _load_publications(self, pub_file):
-        """Load publications for a single author"""
-        try:
-            pubs_df = pd.read_csv(pub_file, sep='\t')
-            if pubs_df.empty:
-                return
-
-            scholar_id = pubs_df['scholar_id'].iloc[0]
-            excluded_pubs_count = 0
-
-            # Process each publication
-            for _, pub in pubs_df.iterrows():
-                # get standardized journal name here before its too late
-                journal_name = self._standardize_journal_name(pub.get('journal', ''))
-
-                # skip if this journal is in the excluded list
-                if self._is_journal_to_be_excluded(journal_name):
-                    excluded_pubs_count += 1
-                    continue
-
-                pub_id = self._generate_publication_id(pub)
-
-                # Store in publications dict if not already there
-                if pub_id not in self.publications:
-                    self.publications[pub_id] = {
-                        'title': pub['title'],
-                        'authors': pub['authors'],
-                        'author_list': self._parse_authors(pub['authors']),
-                        'venue': pub.get('venue', ''),
-                        'journal': journal_name,
-                        'volume': pub.get('volume', ''),
-                        'issue': pub.get('issue', ''),
-                        'year': int(pub['year']) if str(pub['year']).isdigit() else 0,
-                        'citations': int(pub['citations']) if str(pub['citations']).isdigit() else 0,
-                        'pub_url': pub.get('pub_url', ''),
-                        'author_ids': [scholar_id]  # List of author IDs from our dataset
-                    }
-                else:
-                    # If publication already exists, add this author to it
-                    if scholar_id not in self.publications[pub_id]['author_ids']:
-                        self.publications[pub_id]['author_ids'].append(scholar_id)
-
-                    # Update journal name if this version is "better" (i.e., not all caps like "FRONTIERS IN MARINE SCIENCE")
-                    existing_journal = self.publications[pub_id]['journal']
-                    if existing_journal.isupper() and not journal_name.isupper():
-                        self.publications[pub_id]['journal'] = journal_name
-
-                # Add to author-publications mapping
-                self.author_publications[scholar_id].append(pub_id)
-
-            print(f" - {self.authors[scholar_id]['name'] + ' ':.<30} : Loaded {len(pubs_df) - excluded_pubs_count} pubs (after excluding {excluded_pubs_count})")
-
-        except Exception as e:
-            print(f"Error loading publications from {pub_file}: {str(e)}")
-
-
     def _is_journal_to_be_excluded(self, journal_name):
         """Check if journal should be excluded based on patterns"""
         if not journal_name or not self.excluded_journals:
@@ -275,7 +342,6 @@ class PublicationData:
                 return True
 
         return False
-
 
     def _generate_publication_id(self, pub):
         """Generate a unique ID for a publication based on title and year"""
@@ -300,7 +366,7 @@ class PublicationData:
 
     def _build_coauthor_network(self):
         """Build network of co-authorship relationships"""
-        print("Building co-authorship network...")
+        print("\n\nBuilding co-authorship network...")
 
         # Add all authors to the graph
         for author_id, author_data in self.authors.items():
@@ -462,7 +528,7 @@ class HTMLGenerator:
 
         .container {
             width: 90%;
-            max-width: 1200px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -984,7 +1050,7 @@ class HTMLGenerator:
             <div class="card">
                 <h2 class="card-title">Total number of publications per year</h2>
                 <p>This chart includes publications authored by the {total_authors} authors at the {self.institute_name}.
-                <div style="height: 450px; position: relative; margin-bottom: 60px;">
+                <div style="height: 655px; position: relative; margin-bottom: 60px;">
                     <canvas id="yearly-publications-chart"></canvas>
                 </div>
                 <div style="clear: both; height: 60px;"></div>
@@ -993,7 +1059,7 @@ class HTMLGenerator:
             <div class="card">
                 <h2 class="card-title">Citation Trends</h2>
                 <p>The total number of citations accumulated over the years by work published between {min_year} and {max_year} by the {total_authors} authors included in this report.
-                <div style="height: 450px; position: relative; margin-bottom: 60px;">
+                <div style="height: 655px; position: relative; margin-bottom: 60px;">
                     <canvas id="citation-trends-chart"></canvas>
                 </div>
                 <div style="clear: both; height: 60px;"></div>
@@ -1567,7 +1633,7 @@ class HTMLGenerator:
             <div class="card">
                 <h2 class="card-title">Publication Trends</h2>
                 <p>Trends for the period between <b>{min_year}</b> to <b>{max_year}</b>:
-                <div style="height: 400px; position: relative; margin-bottom: 90px; overflow: visible;">
+                <div style="height: 655px; position: relative; margin-bottom: 90px; overflow: visible;">
                     <canvas id="publication-chart"></canvas>
                 </div>
                 <!-- Add a clear div to force proper spacing -->
