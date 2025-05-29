@@ -753,6 +753,12 @@ class HTMLGenerator:
         # Generate individual group pages
         self._generate_group_pages()
 
+        # Generate researchers overview page
+        self._generate_researchers_page()
+
+        # Generate research groups overview page
+        self._generate_research_groups_page()
+
         # Generate journal analysis page
         self._generate_journal_page()
 
@@ -1376,7 +1382,7 @@ class HTMLGenerator:
 
             html += f"""
                             <tr>
-                                <td><strong>{group_link}</strong></td>
+                                <td>{group_link}</td>
                                 <td style="text-align: center;" title="{'; '.join([a['name'] for a in group['authors']])}">{group['author_count']}</td>
                                 <td style="text-align: center;">{group['publications']}</td>
                                 <td style="text-align: center;">{group['citations']}</td>
@@ -1393,6 +1399,192 @@ class HTMLGenerator:
         """
 
         return html
+
+
+    def _generate_researchers_page(self):
+        """Generate the researchers overview page"""
+        html = self._page_header("Researchers Overview", active_page="researchers")
+        
+        # Get year range
+        all_years = [int(pub.get('year', 0)) for pub in self.data.publications.values()
+                    if pub.get('year') and str(pub.get('year')).isdigit()]
+        min_year = min(all_years) if all_years else 0
+        max_year = max(all_years) if all_years else 0
+        
+        # Calculate author stats
+        author_stats = {}
+        for author_id, author_data in self.data.authors.items():
+            pub_ids = self.data.author_publications.get(author_id, [])
+            included_pubs = [self.data.publications[pub_id] for pub_id in pub_ids if pub_id in self.data.publications]
+            
+            pub_count = len(included_pubs)
+            included_citations = sum(int(pub.get('citations', 0)) for pub in included_pubs)
+            
+            citation_counts = sorted([int(pub.get('citations', 0)) for pub in included_pubs], reverse=True)
+            included_h_index = 0
+            for i, citations in enumerate(citation_counts):
+                if i+1 <= citations:
+                    included_h_index = i+1
+                else:
+                    break
+            
+            author_stats[author_id] = {
+                'pub_count': pub_count,
+                'included_citations': included_citations,
+                'included_h_index': included_h_index,
+                'lifetime_citations': int(author_data.get('total_citations', 0)),
+                'lifetime_h_index': int(author_data.get('h_index', 0))
+            }
+        
+        html += f"""
+        <div class="container">
+            <div class="card">
+                <h2 class="card-title">Researchers from the {self.institute_name} included in this report</h2>
+                <table id="researchers-table" class="display">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Research Group</th>
+                            <th style="text-align: center;">Publications<br/>({min_year}-{max_year})</th>
+                            <th style="text-align: center;">Authorship Roles<br/>({min_year}-{max_year})</th>
+                            <th style="text-align: center;">Citations<br/>({min_year}-{max_year})</th>
+                            <th style="text-align: center;">Avg. Citations<br/>({min_year}-{max_year})</th>
+                            <th style="text-align: center;">h-index<br/>({min_year}-{max_year})</th>
+                            <th style="text-align: center;">Citations<br/>(Lifetime)</th>
+                            <th style="text-align: center;">h-index<br/>(Lifetime)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
+        
+        # Group authors by research group for better organization
+        authors_by_group = {}
+        ungrouped_authors = []
+    
+        sorted_authors = list(self.data.authors.items())
+        random.shuffle(sorted_authors)
+    
+        for author_id, author in sorted_authors:
+            supplemental_author_info = self.data.get_supplemental_author_info_from_user_YAML(author_id)
+            research_group = supplemental_author_info.get('research_group')
+    
+            # Only group if research_group exists and is not empty
+            if research_group and research_group.strip():
+                if research_group not in authors_by_group:
+                    authors_by_group[research_group] = []
+                authors_by_group[research_group].append((author_id, author, supplemental_author_info))
+            else:
+                ungrouped_authors.append((author_id, author, supplemental_author_info))
+    
+        # Display grouped authors first, then ungrouped
+        all_authors_display = []
+    
+        # Sort groups alphabetically
+        for group_name in sorted(authors_by_group.keys()):
+            all_authors_display.extend(authors_by_group[group_name])
+    
+        # Add ungrouped authors
+        all_authors_display.extend(ungrouped_authors)
+    
+        for author_id, author, supplemental_author_info in all_authors_display:
+            stats = author_stats[author_id]
+            position_stats = self._calculate_author_position_stats(author_id)
+            role_chart = self._generate_author_role_piechart(position_stats)
+            pct_last_author = (position_stats['last'] / sum(position_stats.values())) if sum(position_stats.values()) > 0 else 0
+    
+            # Use preferred name if available, with safe fallbacks
+            display_name = supplemental_author_info.get('preferred_name') or author.get('name', 'Unknown')
+    
+            # Handle missing career stage and research group gracefully
+            appointment = supplemental_author_info.get('appointment') or '-'
+            research_group = supplemental_author_info.get('research_group') or '-'
+            research_group_display = self._get_group_link(research_group) if research_group != '-' else '-'
+    
+            # Ensure we have safe values for calculations
+            pub_count = stats['pub_count'] if stats['pub_count'] > 0 else 1  # Avoid division by zero
+            avg_citations = stats['included_citations'] / pub_count
+    
+            html += f"""
+                            <tr>
+                                <td><a href="authors/{author_id}.html">{display_name}</a></td>
+                                <td>{appointment}</td>
+                                <td>{research_group_display}</td>
+                                <td style="text-align: center;">{stats['pub_count']}</td>
+                                <td style="text-align: center;" data-sort="{pct_last_author}">{role_chart}</td>
+                                <td style="text-align: center;">{stats['included_citations']}</td>
+                                <td style="text-align: center;">{avg_citations:.1f}</td>
+                                <td style="text-align: center;">{stats['included_h_index']}</td>
+                                <td style="text-align: center;">{stats['lifetime_citations']}</td>
+                                <td style="text-align: center;">{stats['lifetime_h_index']}</td>
+                            </tr>
+            """
+        
+        html += """
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <script>
+            $('#researchers-table').DataTable({
+                "paging": false,
+                "info": false,
+                "order": [],
+                "columnDefs": [
+                    { "type": "html", "targets": 0 }
+                ],
+                "autoWidth": false,
+                "scrollX": true
+            });
+        </script>
+        """
+        
+        html += self._page_footer()
+        
+        with open(self.output_dir / "researchers.html", 'w') as f:
+            f.write(html)
+    
+        print(" - Generated researchers overview page")
+
+
+    def _generate_research_groups_page(self):
+        """Generate the research groups overview page"""
+        html = self._page_header("Research Groups Overview", active_page="research-groups")
+        
+        # Get year range
+        all_years = [int(pub.get('year', 0)) for pub in self.data.publications.values()
+                    if pub.get('year') and str(pub.get('year')).isdigit()]
+        min_year = min(all_years) if all_years else 0
+        max_year = max(all_years) if all_years else 0
+        
+        html += f"""<div class="container">"""
+        
+        # Copy the table generation logic from _add_research_groups_table method
+        html = self._add_research_groups_table(html, min_year, max_year)
+        
+        html += """
+        </div>
+        
+        <script>
+            $('#groups-table').DataTable({
+                "paging": false,
+                "info": false,
+                "order": [[0, 'asc']],
+                "columnDefs": [
+                    { "type": "html", "targets": [0, 2] },
+                    { "type": "num", "targets": [1, 2, 3, 4, 5, 6] }
+                ],
+                "autoWidth": false,
+                "scrollX": true
+            });
+        </script>
+        """
+        
+        html += self._page_footer()
+        
+        with open(self.output_dir / "research-groups.html", 'w') as f:
+            f.write(html)
 
 
     def _generate_index_page(self):
@@ -1435,44 +1627,11 @@ class HTMLGenerator:
         chart_years = sorted(pubs_per_year.keys())
         chart_pub_counts = [pubs_per_year[year] for year in chart_years]
 
-        # Calculate more detailed author stats
-        author_stats = {}
-        for author_id, author_data in self.data.authors.items():
-            # Get publications for this author in our dataset
-            pub_ids = self.data.author_publications.get(author_id, [])
-            included_pubs = [self.data.publications[pub_id] for pub_id in pub_ids if pub_id in self.data.publications]
-
-            # Count publications
-            pub_count = len(included_pubs)
-
-            # Calculate citations for included publications only
-            included_citations = sum(int(pub.get('citations', 0)) for pub in included_pubs)
-
-            # Calculate h-index for included publications
-            citation_counts = sorted([int(pub.get('citations', 0)) for pub in included_pubs], reverse=True)
-            included_h_index = 0
-            for i, citations in enumerate(citation_counts):
-                if i+1 <= citations:
-                    included_h_index = i+1
-                else:
-                    break
-
-            # Store stats
-            author_stats[author_id] = {
-                'pub_count': pub_count,
-                'included_citations': included_citations,
-                'included_h_index': included_h_index,
-                'lifetime_citations': int(author_data.get('total_citations', 0)),
-                'lifetime_h_index': int(author_data.get('h_index', 0))
-            }
-
-
-
         html += f"""
         <div class="container">
             <div class="card">
-                <h2 class="card-title">{self.institute_name} Overview</h2>
-                <p>Between the years <b>{min_year} and {max_year}</b>, the <b>{total_authors}</b> researchers of the {self.institute_name} included in this dataset published a total of <b>{total_publications}</b> articles in <a href="./journals.html">peer-reviewed journals or pre-print servers</a> that accumulated over <b>{total_citations}</b> citations collectively.</p>
+                <h2 class="card-title">Overview</h2>
+                <p>Between the years <b>{min_year} and {max_year}</b>, the <b>{total_authors}</b> researchers in <b>{total_groups}</b> groups of the {self.institute_name} included in this dataset published a total of <b>{total_publications}</b> articles in <a href="./journals.html">peer-reviewed journals or pre-print servers</a> that accumulated over <b>{total_citations}</b> citations collectively.</p>
             </div>
 
             <div class="card">
@@ -1506,97 +1665,8 @@ class HTMLGenerator:
                 <div style="clear: both; height: 60px;"></div>
                 <p>Please note that the citation counts will naturally plateau since most recent publications have not been out long enough to be cited from within other work. Thus this pattern alone does not suggest decreasing productivity or impact.
             </div>
-
-            <div class="card">
-                <h2 class="card-title">Researchers from the {self.institute_name} included in this report</h2>
-                <table id="researchers-table" class="display">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Role</th>
-                            <th>Research Group</th>
-                            <th style="text-align: center;">Publications<br/>({min_year}-{max_year})</th>
-                            <th style="text-align: center;">Authorship Roles<br/>({min_year}-{max_year})</th>
-                            <th style="text-align: center;">Citations<br/>({min_year}-{max_year})</th>
-                            <th style="text-align: center;">Avg. Citations<br/>({min_year}-{max_year})</th>
-                            <th style="text-align: center;">h-index<br/>({min_year}-{max_year})</th>
-                            <th style="text-align: center;">Citations<br/>(Lifetime)</th>
-                            <th style="text-align: center;">h-index<br/>(Lifetime)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+        </div>
         """
-
-        # Group authors by research group for better organization
-        authors_by_group = {}
-        ungrouped_authors = []
-
-        sorted_authors = list(self.data.authors.items())
-        random.shuffle(sorted_authors)
-
-        for author_id, author in sorted_authors:
-            supplemental_author_info = self.data.get_supplemental_author_info_from_user_YAML(author_id)
-            research_group = supplemental_author_info.get('research_group')
-
-            # Only group if research_group exists and is not empty
-            if research_group and research_group.strip():
-                if research_group not in authors_by_group:
-                    authors_by_group[research_group] = []
-                authors_by_group[research_group].append((author_id, author, supplemental_author_info))
-            else:
-                ungrouped_authors.append((author_id, author, supplemental_author_info))
-
-        # Display grouped authors first, then ungrouped
-        all_authors_display = []
-
-        # Sort groups alphabetically
-        for group_name in sorted(authors_by_group.keys()):
-            all_authors_display.extend(authors_by_group[group_name])
-
-        # Add ungrouped authors
-        all_authors_display.extend(ungrouped_authors)
-
-        for author_id, author, supplemental_author_info in all_authors_display:
-            stats = author_stats[author_id]
-            position_stats = self._calculate_author_position_stats(author_id)
-            role_chart = self._generate_author_role_piechart(position_stats)
-            pct_last_author = (position_stats['last'] / sum(position_stats.values())) if sum(position_stats.values()) > 0 else 0
-
-            # Use preferred name if available, with safe fallbacks
-            display_name = supplemental_author_info.get('preferred_name') or author.get('name', 'Unknown')
-
-            # Handle missing career stage and research group gracefully
-            appointment = supplemental_author_info.get('appointment') or '-'
-            research_group = supplemental_author_info.get('research_group') or '-'
-            research_group_display = self._get_group_link(research_group) if research_group != '-' else '-'
-
-            # Ensure we have safe values for calculations
-            pub_count = stats['pub_count'] if stats['pub_count'] > 0 else 1  # Avoid division by zero
-            avg_citations = stats['included_citations'] / pub_count
-
-            html += f"""
-                        <tr>
-                            <td><a href="authors/{author_id}.html">{display_name}</a></td>
-                            <td>{appointment}</td>
-                            <td>{research_group_display}</td>
-                            <td style="text-align: center;">{stats['pub_count']}</td>
-                            <td style="text-align: center;" data-sort="{pct_last_author}">{role_chart}</td>
-                            <td style="text-align: center;">{stats['included_citations']}</td>
-                            <td style="text-align: center;">{avg_citations:.1f}</td>
-                            <td style="text-align: center;">{stats['included_h_index']}</td>
-                            <td style="text-align: center;">{stats['lifetime_citations']}</td>
-                            <td style="text-align: center;">{stats['lifetime_h_index']}</td>
-                        </tr>
-            """
-
-        html += """
-                    </tbody>
-                </table>
-            </div>"""
-
-        html = self._add_research_groups_table(html, min_year, max_year)
-
-        html += """</div>"""
 
         html += """
         <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -1733,32 +1803,7 @@ class HTMLGenerator:
                 );
             });
 
-            // Initialize the researchers table with DataTables so we can sort things
-            $('#researchers-table').DataTable({
-                "paging": false,
-                "info": false,
-                "order": [],  // No initial sorting (keeps the random order)
-                "columnDefs": [
-                    { "type": "html", "targets": 0 }  // For proper sorting of name column with links
-                ],
-                "autoWidth": false,  // Prevent automatic width calculation
-                "scrollX": true      // Add horizontal scrolling if needed
-            });
-
-            // Initialize the research groups table with DataTables
-            $('#groups-table').DataTable({
-                "paging": false,
-                "info": false,
-                "order": [[0, 'asc']],  // Default sort by group name (desc)
-                "columnDefs": [
-                    { "type": "html", "targets": [0, 2] }, // For proper sorting of group names with HTML
-                    { "type": "num", "targets": [1, 2, 3, 4, 5, 6] } // Numeric sorting for all metrics
-                ],
-                "autoWidth": false,
-                "scrollX": true
-            });
-
-        </script>
+         </script>
         """
 
         html += self._page_footer()
@@ -3249,13 +3294,15 @@ class HTMLGenerator:
         </head>
         <body>
             <header>
-                <h1>Scholarly Data For Scientists at the {self.institute_name}</h1>
+                <h1>Scholarly Report for the {self.institute_name}</h1>
             </header>
 
             <nav>
                 <ul>
                     <li><a href="{prefix}/index.html">General Overview</a></li>
-                    <li><a href="{prefix}/journals.html">Journals Overview</a></li>
+                    <li><a href="{prefix}/researchers.html">Researchers</a></li>
+                    <li><a href="{prefix}/research-groups.html">Groups</a></li>
+                    <li><a href="{prefix}/journals.html">Journals</a></li>
                 </ul>
             </nav>
         """
