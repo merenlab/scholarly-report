@@ -1746,10 +1746,10 @@ class HTMLGenerator:
             $('#groups-table').DataTable({
                 "paging": false,
                 "info": false,
-                "order": [[2, 'desc']],  // Default sort by publications (desc)
+                "order": [[0, 'asc']],  // Default sort by group name (desc)
                 "columnDefs": [
                     { "type": "html", "targets": 0 }, // For proper sorting of group names with HTML
-                    { "type": "num", "targets": [1, 2, 3, 4, 5, 6, 7, 8, 9] } // Numeric sorting for all metrics
+                    { "type": "num", "targets": [1, 2, 3, 4, 5, 6] } // Numeric sorting for all metrics
                 ],
                 "autoWidth": false,
                 "scrollX": true
