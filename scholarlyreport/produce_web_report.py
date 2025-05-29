@@ -749,6 +749,9 @@ class HTMLGenerator:
         # Generate individual author pages
         self._generate_author_pages()
 
+        # Generate individual group pages
+        self._generate_group_pages()
+
         # Generate journal analysis page
         self._generate_journal_page()
 
@@ -1399,6 +1402,10 @@ class HTMLGenerator:
         group_network_data = self.group_data.get_group_coauthorship_data()
         group_network_json = json.dumps(group_network_data)
 
+        # Keep track of some basic groups insights
+        total_groups = len(self.group_data.groups)
+        total_collaborations = self.group_data.group_coauthor_network.number_of_edges()
+
         # Calculate total stats for summary
         total_publications = len(self.data.publications)
         total_authors = len(self.data.authors)
@@ -1455,6 +1462,8 @@ class HTMLGenerator:
                 'lifetime_h_index': int(author_data.get('h_index', 0))
             }
 
+
+
         html += f"""
         <div class="container">
             <div class="card">
@@ -1469,31 +1478,20 @@ class HTMLGenerator:
             </div>
 
             <div class="card">
+                <h2 class="card-title">Inter-Group Collaboration Network</h2>
+                <p>This network shows the structure of {total_collaborations} inter-group collaborations between the <b>{total_groups}</b> research groups at the {self.institute_name}.
+                Lines connect groups that have co-authored publications together, with thicker lines indicating more collaborations.</p>
+                <div id="group-network" class="network-container"></div>
+            </div>
+
+            <div class="card">
                 <h2 class="card-title">Total number of publications per year</h2>
                 <p>This chart includes publications authored by the {total_authors} authors at the {self.institute_name}.
                 <div style="height: 655px; position: relative; margin-bottom: 60px;">
                     <canvas id="yearly-publications-chart"></canvas>
                 </div>
                 <div style="clear: both; height: 60px;"></div>
-            </div>"""
-
-        # Add the group network section
-        group_network_data = self.group_data.get_group_coauthorship_data()
-        group_network_json = json.dumps(group_network_data)
-
-        total_groups = len(self.group_data.groups)
-        total_collaborations = self.group_data.group_coauthor_network.number_of_edges()
-
-        html += f"""
-                    <div class="card">
-                        <h2 class="card-title">Inter-Group Collaboration Network</h2>
-                        <p>This network shows the structure of {total_collaborations} inter-group collaborations between the <b>{total_groups}</b> research groups at the {self.institute_name}.
-                        Lines connect groups that have co-authored publications together, with thicker lines indicating more collaborations.</p>
-                        <div id="group-network" class="network-container"></div>
-                    </div>
-        """
-
-        html += f"""
+            </div>
 
             <div class="card">
                 <h2 class="card-title">Citation Trends</h2>
@@ -1911,6 +1909,451 @@ class HTMLGenerator:
         return None
 
 
+    def _generate_group_pages(self):
+        """Generate individual pages for each research group"""
+        if not self.group_data.groups:
+            print(" - No research groups to generate pages for")
+            return
+            
+        # Create groups directory
+        groups_dir = self.output_dir / "groups"
+        groups_dir.mkdir(exist_ok=True, parents=True)
+        
+        for group_name, group_data in self.group_data.groups.items():
+            self._generate_group_page(group_name, group_data, groups_dir)
+        
+        print(f" - Generated {len(self.group_data.groups)} group pages")
+    
+    def _generate_group_page(self, group_name, group_data, groups_dir):
+        """Generate page for a single research group"""
+        html = self._page_header(f"{group_name} - Research Group Profile", active_page="groups")
+        
+        # Get publication data for this group
+        pub_ids = set(self.group_data.group_publications.get(group_name, []))
+        publications = [self.group_data.publication_data.publications[pub_id] for pub_id in pub_ids 
+                       if pub_id in self.group_data.publication_data.publications]
+        
+        # Sort by year (newest first), then by citations (highest first)
+        publications.sort(key=lambda x: (-int(x.get('year', 0)), -int(x.get('citations', 0))))
+        
+        # Calculate statistics
+        total_pubs = len(publications)
+        total_citations = sum(int(p.get('citations', 0)) for p in publications)
+        
+        # Determine the year range for the group
+        pub_years = [int(pub.get('year', 0)) for pub in publications if pub.get('year') and str(pub.get('year')).isdigit()]
+        min_year = min(pub_years) if pub_years else "N/A"
+        max_year = max(pub_years) if pub_years else "N/A"
+        
+        # Calculate yearly statistics
+        yearly_pubs = Counter()
+        yearly_citations = Counter()
+        journals = Counter()
+        
+        for pub in publications:
+            year = int(pub.get('year', 0)) if pub.get('year') and str(pub.get('year')).isdigit() else 0
+            if year > 0:
+                yearly_pubs[year] += 1
+                yearly_citations[year] += int(pub.get('citations', 0))
+            journals[pub.get('journal', 'Unknown')] += 1
+        
+        # Calculate h-index and i10-index for this group
+        citation_counts = sorted([int(pub.get('citations', 0)) for pub in publications], reverse=True)
+        h_index = 0
+        for i, citations in enumerate(citation_counts):
+            if i + 1 <= citations:
+                h_index = i + 1
+            else:
+                break
+        i10_index = sum(1 for citations in citation_counts if citations >= 10)
+        
+        # Get collaborating groups
+        collaborating_groups = []
+        if group_name in self.group_data.group_coauthor_network:
+            for neighbor_group in self.group_data.group_coauthor_network.neighbors(group_name):
+                edge_data = self.group_data.group_coauthor_network.get_edge_data(group_name, neighbor_group)
+                neighbor_data = self.group_data.groups.get(neighbor_group, {})
+                
+                collaborating_groups.append({
+                    'name': neighbor_group,
+                    'shared_publications': edge_data.get('weight', 0),
+                    'shared_pub_ids': edge_data.get('publications', []),
+                    'member_count': len(neighbor_data.get('authors', []))
+                })
+        
+        # Sort collaborating groups by number of shared publications
+        collaborating_groups.sort(key=lambda x: x['shared_publications'], reverse=True)
+        
+        # Start the HTML page
+        html += """<div class="container">"""
+        
+        ###########################################################################
+        # Group header and basic info
+        ###########################################################################
+        html += f"""
+            <div class="card">
+                <h2 class="card-title">{group_name}</h2>
+                <p><strong>Research Group</strong> at {self.institute_name}</p>
+            </div>
+        """
+        
+        ###########################################################################
+        # Group members section
+        ###########################################################################
+        members = group_data.get('authors', [])
+        if members:
+            html += f"""
+                <div class="card">
+                    <h2 class="card-title">Group Members ({len(members)})</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th style="text-align: center;">Publications<br/>(Lifetime)</th>
+                                <th style="text-align: center;">Citations<br/>(Lifetime)</th>
+                                <th style="text-align: center;">h-index<br/>(Lifetime)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            """
+            
+            # Sort members by lifetime citations (descending)
+            sorted_members = sorted(members, key=lambda x: x.get('lifetime_citations', 0), reverse=True)
+            
+            for member in sorted_members:
+                html += f"""
+                            <tr>
+                                <td><a href="../authors/{member['id']}.html">{member['name']}</a></td>
+                                <td>{member.get('appointment', '-')}</td>
+                                <td style="text-align: center;">{member.get('lifetime_publications', 0)}</td>
+                                <td style="text-align: center;">{member.get('lifetime_citations', 0)}</td>
+                                <td style="text-align: center;">{member.get('lifetime_h_index', 0)}</td>
+                            </tr>
+                """
+            
+            html += """
+                        </tbody>
+                    </table>
+                </div>
+            """
+        
+        ###########################################################################
+        # Group statistics
+        ###########################################################################
+        html += f"""
+            <div class="card">
+                <h2 class="card-title">Group Statistics</h2>
+                <p>Overview of the period between <b>{min_year}</b> to <b>{max_year}</b>:</p>
+                
+                <div class="author-stats">
+                    <div class="stat-box">
+                        <div class="stat-number">{total_pubs}</div>
+                        <div class="stat-label">Publications<br/>(Selected Period)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{total_citations}</div>
+                        <div class="stat-label">Citations<br/>(Selected Period)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{h_index}</div>
+                        <div class="stat-label">h-index<br/>(Selected Period)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{i10_index}</div>
+                        <div class="stat-label">i10-index<br/>(Selected Period)</div>
+                    </div>
+                </div>
+                
+                <p>Lifetime overview:</p>
+                
+                <div class="author-stats">
+                    <div class="stat-box">
+                        <div class="stat-number">{group_data.get('lifetime_publications', 0)}</div>
+                        <div class="stat-label">Publications<br/>(Lifetime)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{group_data.get('lifetime_citations', 0)}</div>
+                        <div class="stat-label">Citations<br/>(Lifetime)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{len(members)}</div>
+                        <div class="stat-label">Group<br/>Members</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{len(collaborating_groups)}</div>
+                        <div class="stat-label">Collaborating<br/>Groups</div>
+                    </div>
+                </div>
+            </div>
+        """
+        
+        ###########################################################################
+        # Publication trends (if we have enough data)
+        ###########################################################################
+        years = sorted(yearly_pubs.keys()) if yearly_pubs else []
+        if len(years) > 1:  # Only show chart if we have multiple years
+            chart_years = list(map(str, years))
+            chart_pub_counts = [yearly_pubs[y] for y in years]
+            chart_citation_counts = [yearly_citations[y] for y in years]
+            
+            html += f"""
+                <div class="card">
+                    <h2 class="card-title">Publication Trends</h2>
+                    <p>Trends for the period between <b>{min_year}</b> to <b>{max_year}</b>:</p>
+                    <div style="height: 655px; position: relative; margin-bottom: 90px; overflow: visible;">
+                        <canvas id="group-publication-chart"></canvas>
+                    </div>
+                    <div style="clear: both; height: 60px;"></div>
+                </div>
+            """
+        
+        ###########################################################################
+        # Shared publications with other groups
+        ###########################################################################
+        if collaborating_groups:
+            html += f"""
+                <div class="card">
+                    <h2 class="card-title">Shared Publications with Other Groups</h2>
+                    <p>This table shows other research groups at {self.institute_name} that have co-authored publications with {group_name} between {min_year} and {max_year}.</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Research Group</th>
+                                <th style="text-align: center;">Members</th>
+                                <th style="text-align: center;">Shared Publications</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            """
+            
+            for collab_group in collaborating_groups:
+                html += f"""
+                            <tr>
+                                <td><a href="{self._create_safe_filename(collab_group['name'])}.html">{collab_group['name']}</a></td>
+                                <td style="text-align: center;">{collab_group['member_count']}</td>
+                                <td style="text-align: center;">{collab_group['shared_publications']}</td>
+                            </tr>
+                """
+            
+            html += """
+                        </tbody>
+                    </table>
+                </div>
+            """
+        
+        ###########################################################################
+        # Top publication venues
+        ###########################################################################
+        if journals:
+            top_journals = journals.most_common(15)
+            html += """
+                <div class="card">
+                    <h2 class="card-title">Top Publication Venues</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Journal</th>
+                                <th style="text-align:center;">Publications</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            """
+            
+            for journal, count in top_journals:
+                html += f"""
+                            <tr>
+                                <td><a href="https://www.google.com/search?q={'+'.join(journal.split())}" target="_blank">{journal}</a></td>
+                                <td style="text-align:center;">{count}</td>
+                            </tr>
+                """
+            
+            html += """
+                        </tbody>
+                    </table>
+                </div>
+            """
+        
+        ###########################################################################
+        # Publications table
+        ###########################################################################
+        html += f"""
+            <div class="card">
+                <h2 class="card-title">Publications</h2>
+                <p>Showing {total_pubs} publications by {group_name} members sorted by year (newest first):</p>
+                
+                <table id="group-publications-table" class="display">
+                    <thead>
+                        <tr>
+                            <th>Year</th>
+                            <th>Title</th>
+                            <th>Authors from Group</th>
+                            <th>Journal</th>
+                            <th style="text-align:center;">Citations</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
+        
+        for pub in publications:
+            pub_url = pub.get('pub_url', '')
+            title_with_link = f"<a href='{pub_url}' target='_blank'>{pub.get('title', 'Unknown Title')}</a>" if pub_url else pub.get('title', 'Unknown Title')
+            
+            # Find which group members are authors on this paper
+            group_authors = []
+            for author_id in pub.get('author_ids', []):
+                if author_id in self.group_data.author_to_group and self.group_data.author_to_group[author_id] == group_name:
+                    # Find the author's name in our group data
+                    for member in members:
+                        if member['id'] == author_id:
+                            group_authors.append(f"<a href='../authors/{author_id}.html'>{member['name']}</a>")
+                            break
+            
+            group_authors_str = "; ".join(group_authors) if group_authors else "Unknown"
+            
+            year = pub.get('year', '')
+            citations = pub.get('citations', 0)
+            
+            html += f"""
+                        <tr>
+                            <td>{year}</td>
+                            <td>{title_with_link}</td>
+                            <td>{group_authors_str}</td>
+                            <td>{pub.get('journal', '')}</td>
+                            <td style="text-align:center;">{citations}</td>
+                        </tr>
+            """
+        
+        html += """
+                    </tbody>
+                </table>
+            </div>
+        """
+        
+        ###########################################################################
+        # End of page
+        ###########################################################################
+        html += """</div>"""
+        
+        ###########################################################################
+        # Scripts
+        ###########################################################################
+        html += """
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+            <script>
+        """
+        
+        # Add chart script only if we have chart data
+        if len(years) > 1:
+            html += """
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('Setting up group publication chart');
+                    const canvas = document.getElementById('group-publication-chart');
+                    if (canvas) {
+                        const chartLabels = """ + json.dumps(chart_years) + """;
+                        const pubData = """ + json.dumps(chart_pub_counts) + """;
+                        const citData = """ + json.dumps(chart_citation_counts) + """;
+                        
+                        try {
+                            const chart = new Chart(canvas, {
+                                type: 'bar',
+                                data: {
+                                    labels: chartLabels,
+                                    datasets: [{
+                                        label: 'Publications',
+                                        data: pubData,
+                                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                                        borderColor: 'rgba(54, 162, 235, 1)',
+                                        borderWidth: 1
+                                    }, {
+                                        label: 'Citations',
+                                        data: citData,
+                                        yAxisID: 'y1',
+                                        type: 'line',
+                                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                                        borderColor: 'rgba(255, 99, 132, 1)',
+                                        borderWidth: 1
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: true,
+                                    layout: {
+                                        padding: {
+                                            top: 10,
+                                            right: 10,
+                                            bottom: 30,
+                                            left: 10
+                                        }
+                                    },
+                                    plugins: {
+                                        legend: {
+                                            position: 'top',
+                                            align: 'start',
+                                            labels: {
+                                                boxWidth: 15,
+                                                padding: 10,
+                                                font: { size: 12 }
+                                            }
+                                        }
+                                    },
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            title: {
+                                                display: true,
+                                                text: 'Publications'
+                                            }
+                                        },
+                                        y1: {
+                                            beginAtZero: true,
+                                            position: 'right',
+                                            title: {
+                                                display: true,
+                                                text: 'Citations'
+                                            },
+                                            grid: {
+                                                drawOnChartArea: false
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                            console.log('Group chart created successfully');
+                        } catch (error) {
+                            console.error('Error creating group chart:', error);
+                        }
+                    }
+                });
+            """
+        
+        html += """
+                $(document).ready(function() {
+                    $('#group-publications-table').DataTable({
+                        "paging": false,
+                        "info": false,
+                        "order": [[0, 'desc'], [4, 'desc']], // Default sort by year desc, then citations desc
+                        "columnDefs": [
+                            { "type": "html", "targets": [1, 2] }, // For proper sorting of columns with links
+                            { "type": "num", "targets": [0, 4] } // Numeric sorting for year and citations
+                        ],
+                        "autoWidth": false,
+                        "scrollX": true
+                    });
+                });
+            </script>
+        """
+        
+        html += self._page_footer()
+        
+        # Create safe filename for the group
+        safe_filename = self._create_safe_filename(group_name)
+        with open(groups_dir / f"{safe_filename}.html", 'w') as f:
+            f.write(html)
+
+
     def _generate_author_pages(self):
         """Generate individual pages for each author"""
         for author_id, author_data in self.data.authors.items():
@@ -2053,10 +2496,9 @@ class HTMLGenerator:
         html += """<div class="container">"""
 
         ###########################################################################
-        # Author stats card with enhanced information
+        # Author stats card
         ###########################################################################
 
-        # Build additional info section - handle missing fields gracefully
         additional_info_parts = []
         if supplemental_author_info.get('appointment') and supplemental_author_info['appointment'].strip():
             additional_info_parts.append(f"<strong>Role:</strong> {supplemental_author_info['appointment']}")
@@ -2071,59 +2513,6 @@ class HTMLGenerator:
             <div class="card">
                 <h2 class="card-title">{name}</h2>
                 {additional_info_html}
-
-                <p>Overview of the period between <b>{min_year}</b> to <b>{max_year}</b>:
-
-                <div class="author-stats">
-                    <div class="stat-box">
-                        <div class="stat-number">{total_pubs}</div>
-                        <div class="stat-label">Publications<br/>(Selected Period)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number">{total_citations}</div>
-                        <div class="stat-label">Citations<br/>(Selected Period)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number">{included_h_index}</div>
-                        <div class="stat-label">h-index<br/>(Selected Period)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number">{included_i10_index}</div>
-                        <div class="stat-label">i10-index<br/>(Selected Period)</div>
-                    </div>
-                </div>
-
-                <p>Lifetime overview:
-
-                <div class="author-stats">
-                    <div class="stat-box">
-                        <div class="stat-number">{author_data.get('publication_count', 'N/A')}</div>
-                        <div class="stat-label">Publications<br/>(Lifetime)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number">{author_data.get('total_citations', 'N/A')}</div>
-                        <div class="stat-label">Citations<br/>(Lifetime)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number">{author_data.get('h_index', 'N/A')}</div>
-                        <div class="stat-label">h-index<br/>(Lifetime)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number">{author_data.get('i10_index', 'N/A')}</div>
-                        <div class="stat-label">i10-index<br/>(Lifetime)</div>
-                    </div>
-                </div>
-
-                <p><a href="https://scholar.google.com/citations?user={author_id}" target="_blank">View Google Scholar Profile</a></p>
-            </div>
-            """
-
-        ###########################################################################
-        # Author stats card
-        ###########################################################################
-        html += f"""
-            <div class="card">
-                <h2 class="card-title">{name}</h2>
 
                 <p>Overview of the period between <b>{min_year}</b> to <b>{max_year}</b>:
 
@@ -2763,11 +3152,13 @@ class HTMLGenerator:
 
         journal_stats = self.data.get_journal_stats()
 
-        html += """
+        html += f"""
         <div class="container">
             <div class="card">
                 <h2 class="card-title">Journal Publication Analysis</h2>
-                <p>This page shows statistics about publication venues in this dataset. Click on the publication count to see detailed information about publications in each journal.</p>
+                <p>This page shows statistics about publication venues of researchers at the {self.institute_name}, and the overall impact of the work appeared in each journal in the form of average number of citations they have received.</p>
+
+                <p>Click on the publication count to see detailed information about publications in each journal.</p>
 
                 <table id="journals-table" class="display">
                     <thead>
@@ -2835,7 +3226,7 @@ class HTMLGenerator:
         """Generate the common header for all pages"""
 
         # Calculate relative path prefix based on active page
-        prefix = '..' if active_page in ['authors', 'journal_detail'] else '.'
+        prefix = '..' if active_page in ['authors', 'journal_detail', 'groups'] else '.'
 
         return f"""<!DOCTYPE html>
         <html lang="en">
@@ -2861,7 +3252,7 @@ class HTMLGenerator:
 
             <nav>
                 <ul>
-                    <li><a href="{prefix}/index.html">Publications Overview</a></li>
+                    <li><a href="{prefix}/index.html">General Overview</a></li>
                     <li><a href="{prefix}/journals.html">Journals Overview</a></li>
                 </ul>
             </nav>
