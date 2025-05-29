@@ -721,6 +721,7 @@ class HTMLGenerator:
         self.institute_name = institute_name
         self.output_dir = Path(output_dir)
         self.authors_dir = self.output_dir / "authors"
+        self.groups_dir = self.output_dir / "groups"
         self.js_dir = self.output_dir / "js"
         self.css_dir = self.output_dir / "css"
         self.data_dir = self.output_dir / "data"
@@ -765,6 +766,7 @@ class HTMLGenerator:
         directories = [
             self.output_dir,
             self.authors_dir,
+            self.groups_dir,
             self.js_dir,
             self.css_dir,
             self.data_dir
@@ -1370,9 +1372,11 @@ class HTMLGenerator:
                 remaining = len(author_links) - author_count
                 authors_display = temp_display + f"; ... and {remaining} more"
 
+            group_link = self._get_group_link(group['name'])
+
             html += f"""
                             <tr>
-                                <td><strong>{group['name']}</strong></td>
+                                <td><strong>{group_link}</strong></td>
                                 <td style="text-align: center;" title="{'; '.join([a['name'] for a in group['authors']])}">{group['author_count']}</td>
                                 <td style="text-align: center;">{group['publications']}</td>
                                 <td style="text-align: center;">{group['citations']}</td>
@@ -1564,6 +1568,7 @@ class HTMLGenerator:
             # Handle missing career stage and research group gracefully
             appointment = supplemental_author_info.get('appointment') or '-'
             research_group = supplemental_author_info.get('research_group') or '-'
+            research_group_display = self._get_group_link(research_group) if research_group != '-' else '-'
 
             # Ensure we have safe values for calculations
             pub_count = stats['pub_count'] if stats['pub_count'] > 0 else 1  # Avoid division by zero
@@ -1573,7 +1578,7 @@ class HTMLGenerator:
                         <tr>
                             <td><a href="authors/{author_id}.html">{display_name}</a></td>
                             <td>{appointment}</td>
-                            <td>{research_group}</td>
+                            <td>{research_group_display}</td>
                             <td style="text-align: center;">{stats['pub_count']}</td>
                             <td style="text-align: center;" data-sort="{pct_last_author}">{role_chart}</td>
                             <td style="text-align: center;">{stats['included_citations']}</td>
@@ -1746,7 +1751,7 @@ class HTMLGenerator:
                 "info": false,
                 "order": [[0, 'asc']],  // Default sort by group name (desc)
                 "columnDefs": [
-                    { "type": "html", "targets": 0 }, // For proper sorting of group names with HTML
+                    { "type": "html", "targets": [0, 2] }, // For proper sorting of group names with HTML
                     { "type": "num", "targets": [1, 2, 3, 4, 5, 6] } // Numeric sorting for all metrics
                 ],
                 "autoWidth": false,
@@ -1914,49 +1919,49 @@ class HTMLGenerator:
         if not self.group_data.groups:
             print(" - No research groups to generate pages for")
             return
-            
+
         # Create groups directory
         groups_dir = self.output_dir / "groups"
         groups_dir.mkdir(exist_ok=True, parents=True)
-        
+
         for group_name, group_data in self.group_data.groups.items():
             self._generate_group_page(group_name, group_data, groups_dir)
-        
+
         print(f" - Generated {len(self.group_data.groups)} group pages")
-    
+
     def _generate_group_page(self, group_name, group_data, groups_dir):
         """Generate page for a single research group"""
         html = self._page_header(f"{group_name} - Research Group Profile", active_page="groups")
-        
+
         # Get publication data for this group
         pub_ids = set(self.group_data.group_publications.get(group_name, []))
         publications = [self.group_data.publication_data.publications[pub_id] for pub_id in pub_ids 
                        if pub_id in self.group_data.publication_data.publications]
-        
+
         # Sort by year (newest first), then by citations (highest first)
         publications.sort(key=lambda x: (-int(x.get('year', 0)), -int(x.get('citations', 0))))
-        
+
         # Calculate statistics
         total_pubs = len(publications)
         total_citations = sum(int(p.get('citations', 0)) for p in publications)
-        
+
         # Determine the year range for the group
         pub_years = [int(pub.get('year', 0)) for pub in publications if pub.get('year') and str(pub.get('year')).isdigit()]
         min_year = min(pub_years) if pub_years else "N/A"
         max_year = max(pub_years) if pub_years else "N/A"
-        
+
         # Calculate yearly statistics
         yearly_pubs = Counter()
         yearly_citations = Counter()
         journals = Counter()
-        
+
         for pub in publications:
             year = int(pub.get('year', 0)) if pub.get('year') and str(pub.get('year')).isdigit() else 0
             if year > 0:
                 yearly_pubs[year] += 1
                 yearly_citations[year] += int(pub.get('citations', 0))
             journals[pub.get('journal', 'Unknown')] += 1
-        
+
         # Calculate h-index and i10-index for this group
         citation_counts = sorted([int(pub.get('citations', 0)) for pub in publications], reverse=True)
         h_index = 0
@@ -1966,37 +1971,37 @@ class HTMLGenerator:
             else:
                 break
         i10_index = sum(1 for citations in citation_counts if citations >= 10)
-        
+
         # Get collaborating groups
         collaborating_groups = []
         if group_name in self.group_data.group_coauthor_network:
             for neighbor_group in self.group_data.group_coauthor_network.neighbors(group_name):
                 edge_data = self.group_data.group_coauthor_network.get_edge_data(group_name, neighbor_group)
                 neighbor_data = self.group_data.groups.get(neighbor_group, {})
-                
+
                 collaborating_groups.append({
                     'name': neighbor_group,
                     'shared_publications': edge_data.get('weight', 0),
                     'shared_pub_ids': edge_data.get('publications', []),
                     'member_count': len(neighbor_data.get('authors', []))
                 })
-        
+
         # Sort collaborating groups by number of shared publications
         collaborating_groups.sort(key=lambda x: x['shared_publications'], reverse=True)
-        
+
         # Start the HTML page
         html += """<div class="container">"""
-        
+
         ###########################################################################
         # Group header and basic info
         ###########################################################################
         html += f"""
             <div class="card">
                 <h2 class="card-title">{group_name}</h2>
-                <p><strong>Research Group</strong> at {self.institute_name}</p>
+                <p><strong>Research Group</strong> at the {self.institute_name}</p>
             </div>
         """
-        
+
         ###########################################################################
         # Group members section
         ###########################################################################
@@ -2017,10 +2022,10 @@ class HTMLGenerator:
                         </thead>
                         <tbody>
             """
-            
+
             # Sort members by lifetime citations (descending)
             sorted_members = sorted(members, key=lambda x: x.get('lifetime_citations', 0), reverse=True)
-            
+
             for member in sorted_members:
                 html += f"""
                             <tr>
@@ -2031,51 +2036,20 @@ class HTMLGenerator:
                                 <td style="text-align: center;">{member.get('lifetime_h_index', 0)}</td>
                             </tr>
                 """
-            
+
             html += """
                         </tbody>
                     </table>
                 </div>
             """
-        
+
         ###########################################################################
         # Group statistics
         ###########################################################################
         html += f"""
             <div class="card">
                 <h2 class="card-title">Group Statistics</h2>
-                <p>Overview of the period between <b>{min_year}</b> to <b>{max_year}</b>:</p>
-                
                 <div class="author-stats">
-                    <div class="stat-box">
-                        <div class="stat-number">{total_pubs}</div>
-                        <div class="stat-label">Publications<br/>(Selected Period)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number">{total_citations}</div>
-                        <div class="stat-label">Citations<br/>(Selected Period)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number">{h_index}</div>
-                        <div class="stat-label">h-index<br/>(Selected Period)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number">{i10_index}</div>
-                        <div class="stat-label">i10-index<br/>(Selected Period)</div>
-                    </div>
-                </div>
-                
-                <p>Lifetime overview:</p>
-                
-                <div class="author-stats">
-                    <div class="stat-box">
-                        <div class="stat-number">{group_data.get('lifetime_publications', 0)}</div>
-                        <div class="stat-label">Publications<br/>(Lifetime)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-number">{group_data.get('lifetime_citations', 0)}</div>
-                        <div class="stat-label">Citations<br/>(Lifetime)</div>
-                    </div>
                     <div class="stat-box">
                         <div class="stat-number">{len(members)}</div>
                         <div class="stat-label">Group<br/>Members</div>
@@ -2085,9 +2059,28 @@ class HTMLGenerator:
                         <div class="stat-label">Collaborating<br/>Groups</div>
                     </div>
                 </div>
+ 
+                <div class="author-stats">
+                    <div class="stat-box">
+                        <div class="stat-number">{total_pubs}</div>
+                        <div class="stat-label">Publications<br/>(<b>{min_year}</b> to <b>{max_year}</b>)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{total_citations}</div>
+                        <div class="stat-label">Citations<br/>(<b>{min_year}</b> to <b>{max_year}</b>)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{group_data.get('lifetime_publications', 0)}</div>
+                        <div class="stat-label">Publications<br/>(Lifetime)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{group_data.get('lifetime_citations', 0)}</div>
+                        <div class="stat-label">Citations<br/>(Lifetime)</div>
+                    </div>
+                </div>
             </div>
         """
-        
+
         ###########################################################################
         # Publication trends (if we have enough data)
         ###########################################################################
@@ -2096,7 +2089,7 @@ class HTMLGenerator:
             chart_years = list(map(str, years))
             chart_pub_counts = [yearly_pubs[y] for y in years]
             chart_citation_counts = [yearly_citations[y] for y in years]
-            
+
             html += f"""
                 <div class="card">
                     <h2 class="card-title">Publication Trends</h2>
@@ -2107,7 +2100,7 @@ class HTMLGenerator:
                     <div style="clear: both; height: 60px;"></div>
                 </div>
             """
-        
+
         ###########################################################################
         # Shared publications with other groups
         ###########################################################################
@@ -2126,7 +2119,7 @@ class HTMLGenerator:
                         </thead>
                         <tbody>
             """
-            
+
             for collab_group in collaborating_groups:
                 html += f"""
                             <tr>
@@ -2135,13 +2128,13 @@ class HTMLGenerator:
                                 <td style="text-align: center;">{collab_group['shared_publications']}</td>
                             </tr>
                 """
-            
+
             html += """
                         </tbody>
                     </table>
                 </div>
             """
-        
+
         ###########################################################################
         # Top publication venues
         ###########################################################################
@@ -2159,7 +2152,7 @@ class HTMLGenerator:
                         </thead>
                         <tbody>
             """
-            
+
             for journal, count in top_journals:
                 html += f"""
                             <tr>
@@ -2167,13 +2160,13 @@ class HTMLGenerator:
                                 <td style="text-align:center;">{count}</td>
                             </tr>
                 """
-            
+
             html += """
                         </tbody>
                     </table>
                 </div>
             """
-        
+
         ###########################################################################
         # Publications table
         ###########################################################################
@@ -2181,7 +2174,7 @@ class HTMLGenerator:
             <div class="card">
                 <h2 class="card-title">Publications</h2>
                 <p>Showing {total_pubs} publications by {group_name} members sorted by year (newest first):</p>
-                
+
                 <table id="group-publications-table" class="display">
                     <thead>
                         <tr>
@@ -2194,11 +2187,11 @@ class HTMLGenerator:
                     </thead>
                     <tbody>
         """
-        
+
         for pub in publications:
             pub_url = pub.get('pub_url', '')
             title_with_link = f"<a href='{pub_url}' target='_blank'>{pub.get('title', 'Unknown Title')}</a>" if pub_url else pub.get('title', 'Unknown Title')
-            
+
             # Find which group members are authors on this paper
             group_authors = []
             for author_id in pub.get('author_ids', []):
@@ -2208,12 +2201,12 @@ class HTMLGenerator:
                         if member['id'] == author_id:
                             group_authors.append(f"<a href='../authors/{author_id}.html'>{member['name']}</a>")
                             break
-            
+
             group_authors_str = "; ".join(group_authors) if group_authors else "Unknown"
-            
+
             year = pub.get('year', '')
             citations = pub.get('citations', 0)
-            
+
             html += f"""
                         <tr>
                             <td>{year}</td>
@@ -2223,18 +2216,18 @@ class HTMLGenerator:
                             <td style="text-align:center;">{citations}</td>
                         </tr>
             """
-        
+
         html += """
                     </tbody>
                 </table>
             </div>
         """
-        
+
         ###########################################################################
         # End of page
         ###########################################################################
         html += """</div>"""
-        
+
         ###########################################################################
         # Scripts
         ###########################################################################
@@ -2244,7 +2237,7 @@ class HTMLGenerator:
             <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
             <script>
         """
-        
+
         # Add chart script only if we have chart data
         if len(years) > 1:
             html += """
@@ -2255,7 +2248,7 @@ class HTMLGenerator:
                         const chartLabels = """ + json.dumps(chart_years) + """;
                         const pubData = """ + json.dumps(chart_pub_counts) + """;
                         const citData = """ + json.dumps(chart_citation_counts) + """;
-                        
+
                         try {
                             const chart = new Chart(canvas, {
                                 type: 'bar',
@@ -2328,7 +2321,7 @@ class HTMLGenerator:
                     }
                 });
             """
-        
+
         html += """
                 $(document).ready(function() {
                     $('#group-publications-table').DataTable({
@@ -2345,9 +2338,9 @@ class HTMLGenerator:
                 });
             </script>
         """
-        
+
         html += self._page_footer()
-        
+
         # Create safe filename for the group
         safe_filename = self._create_safe_filename(group_name)
         with open(groups_dir / f"{safe_filename}.html", 'w') as f:
@@ -2503,7 +2496,8 @@ class HTMLGenerator:
         if supplemental_author_info.get('appointment') and supplemental_author_info['appointment'].strip():
             additional_info_parts.append(f"<strong>Role:</strong> {supplemental_author_info['appointment']}")
         if supplemental_author_info.get('research_group') and supplemental_author_info['research_group'].strip():
-            additional_info_parts.append(f"<strong>Research Group:</strong> {supplemental_author_info['research_group']}")
+            group_link = self._get_group_link(supplemental_author_info.get('research_group'), '..')
+            additional_info_parts.append(f"""<strong>Research Group:</strong> {group_link}""")
 
         additional_info_html = ""
         if additional_info_parts:
@@ -3145,6 +3139,14 @@ class HTMLGenerator:
         safe_name = re.sub(r'[-\s]+', '-', safe_name)
         safe_name = safe_name.strip('-').lower()
         return safe_name[:50]  # Limit length
+
+    def _get_group_link(self, group_name, prefix='.'):
+        """Generate a hyperlink to a group page"""
+        if not group_name or not group_name.strip():
+            return group_name or '-'
+
+        safe_filename = self._create_safe_filename(group_name)
+        return f'<a href="{prefix}/groups/{safe_filename}.html">{group_name}</a>'
 
     def _generate_journal_page(self):
         """Generate page with journal statistics"""
