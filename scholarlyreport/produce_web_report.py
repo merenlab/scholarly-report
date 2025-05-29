@@ -495,6 +495,223 @@ class PublicationData:
 
         return journal_stats
 
+
+class ResearchGroupData:
+    """Handles aggregation and processing of publication data at the research group level"""
+
+    def __init__(self, publication_data):
+        """Initialize with existing PublicationData instance"""
+        self.publication_data = publication_data
+        self.groups = {}  # Dictionary of group info: {group_name: group_data}
+        self.group_publications = defaultdict(list)  # Publications by group: {group_name: [pub_ids]}
+        self.group_coauthor_network = nx.Graph()  # Graph for inter-group collaboration
+        self.author_to_group = {}  # Mapping: {author_id: group_name}
+
+    def build_group_data(self):
+        """Build all group-level data structures"""
+        print("Building research group data...")
+        self._map_authors_to_groups()
+        self._aggregate_group_statistics()
+        self._build_group_publications()
+        self._build_group_coauthor_network()
+        print(f"Built data for {len(self.groups)} research groups with {self.group_coauthor_network.number_of_edges()} inter-group collaborations")
+
+    def _map_authors_to_groups(self):
+        """Create mapping from authors to their research groups"""
+        for author_id, author_data in self.publication_data.authors.items():
+            supplemental_info = self.publication_data.get_supplemental_author_info_from_user_YAML(author_id)
+            group_name = supplemental_info.get('research_group')
+
+            # Only process authors with valid research groups
+            if group_name and group_name.strip():
+                self.author_to_group[author_id] = group_name
+
+    def _aggregate_group_statistics(self):
+        """Aggregate statistics for each research group"""
+        # Group authors by research group
+        authors_by_group = defaultdict(list)
+        for author_id, group_name in self.author_to_group.items():
+            authors_by_group[group_name].append(author_id)
+
+        # Calculate aggregate statistics for each group
+        for group_name, author_ids in authors_by_group.items():
+            group_stats = {
+                'name': group_name,
+                'authors': [],  # List of author info dicts
+                'total_publications': 0,
+                'total_citations': 0,
+                'lifetime_publications': 0,
+                'lifetime_citations': 0,
+                'publication_years': set(),  # For year range calculation
+                'journals': Counter(),  # Publication venues
+                'yearly_publications': Counter(),
+                'yearly_citations': Counter()
+            }
+
+            # Aggregate data from all authors in this group
+            for author_id in author_ids:
+                author_data = self.publication_data.authors.get(author_id, {})
+                supplemental_info = self.publication_data.get_supplemental_author_info_from_user_YAML(author_id)
+
+                # Add author info to group
+                group_stats['authors'].append({
+                    'id': author_id,
+                    'name': supplemental_info.get('preferred_name') or author_data.get('name', 'Unknown'),
+                    'appointment': supplemental_info.get('appointment', ''),
+                    'lifetime_citations': int(author_data.get('total_citations', 0)),
+                    'lifetime_h_index': int(author_data.get('h_index', 0)),
+                    'lifetime_publications': int(author_data.get('publication_count', 0))
+                })
+
+                # Aggregate lifetime statistics
+                group_stats['lifetime_publications'] += int(author_data.get('publication_count', 0))
+                group_stats['lifetime_citations'] += int(author_data.get('total_citations', 0))
+
+                # Get publications for this author in our dataset
+                pub_ids = self.publication_data.author_publications.get(author_id, [])
+                included_pubs = [self.publication_data.publications[pub_id]
+                               for pub_id in pub_ids if pub_id in self.publication_data.publications]
+
+                # Process each publication
+                for pub in included_pubs:
+                    year = pub.get('year')
+                    citations = int(pub.get('citations', 0))
+                    journal = pub.get('journal', 'Unknown')
+
+                    if year and str(year).isdigit():
+                        year = int(year)
+                        group_stats['publication_years'].add(year)
+                        group_stats['yearly_publications'][year] += 1
+                        group_stats['yearly_citations'][year] += citations
+
+                    group_stats['journals'][journal] += 1
+
+            self.groups[group_name] = group_stats
+
+    def _build_group_publications(self):
+        """Build mapping of publications to research groups"""
+        for pub_id, pub_data in self.publication_data.publications.items():
+            # Get the groups represented in this publication
+            groups_in_pub = set()
+            for author_id in pub_data.get('author_ids', []):
+                if author_id in self.author_to_group:
+                    groups_in_pub.add(self.author_to_group[author_id])
+
+            # Add this publication to each group's publication list
+            for group_name in groups_in_pub:
+                self.group_publications[group_name].append(pub_id)
+
+        # Update total publication counts (unique publications only)
+        for group_name in self.groups:
+            unique_pubs = set(self.group_publications[group_name])
+            self.groups[group_name]['total_publications'] = len(unique_pubs)
+
+            # Calculate total citations for group's publications
+            total_citations = 0
+            for pub_id in unique_pubs:
+                if pub_id in self.publication_data.publications:
+                    total_citations += int(self.publication_data.publications[pub_id].get('citations', 0))
+            self.groups[group_name]['total_citations'] = total_citations
+
+    def _build_group_coauthor_network(self):
+        """Build network of inter-group collaborations"""
+        # Add all groups to the network
+        for group_name, group_data in self.groups.items():
+            self.group_coauthor_network.add_node(
+                group_name,
+                publications=group_data['total_publications'],
+                citations=group_data['total_citations'],
+                authors=len(group_data['authors'])
+            )
+
+        # Process each publication to find inter-group collaborations
+        for pub_id, pub_data in self.publication_data.publications.items():
+            # Get all groups represented in this publication
+            groups_in_pub = []
+            for author_id in pub_data.get('author_ids', []):
+                if author_id in self.author_to_group:
+                    group_name = self.author_to_group[author_id]
+                    if group_name not in groups_in_pub:
+                        groups_in_pub.append(group_name)
+
+            # Create edges between all pairs of groups in this publication
+            for i in range(len(groups_in_pub)):
+                for j in range(i+1, len(groups_in_pub)):
+                    group1 = groups_in_pub[i]
+                    group2 = groups_in_pub[j]
+
+                    # Add edge or increment weight if it exists
+                    if self.group_coauthor_network.has_edge(group1, group2):
+                        self.group_coauthor_network[group1][group2]['weight'] += 1
+                        self.group_coauthor_network[group1][group2]['publications'].append(pub_id)
+                    else:
+                        self.group_coauthor_network.add_edge(
+                            group1,
+                            group2,
+                            weight=1,
+                            publications=[pub_id]
+                        )
+
+    def get_group_coauthorship_data(self):
+        """Convert group network to format for D3.js visualization"""
+        nodes = []
+        for group_name in self.group_coauthor_network.nodes():
+            group_data = self.groups.get(group_name, {})
+
+            nodes.append({
+                'id': group_name,
+                'name': group_name,
+                'publications': int(group_data.get('total_publications', 0)),
+                'citations': int(group_data.get('total_citations', 0)),
+                'authors': int(len(group_data.get('authors', [])))
+            })
+
+        links = []
+        for source, target, data in self.group_coauthor_network.edges(data=True):
+            links.append({
+                'source': source,
+                'target': target,
+                'weight': int(data['weight']),
+                'publications': data['publications']
+            })
+
+        return {'nodes': nodes, 'links': links}
+
+
+    def get_group_stats(self):
+        """Get statistics for all research groups"""
+        group_stats = []
+
+        for group_name, group_data in self.groups.items():
+            # Calculate year range
+            years = list(group_data['publication_years'])
+            min_year = min(years) if years else 'N/A'
+            max_year = max(years) if years else 'N/A'
+
+            # Calculate average citations
+            total_pubs = group_data['total_publications']
+            avg_citations = group_data['total_citations'] / total_pubs if total_pubs > 0 else 0
+
+            group_stats.append({
+                'name': group_name,
+                'authors': group_data['authors'],
+                'author_count': len(group_data['authors']),
+                'publications': int(total_pubs),
+                'citations': int(group_data['total_citations']),
+                'avg_citations': float(round(avg_citations, 1)),
+                'lifetime_publications': int(group_data['lifetime_publications']),
+                'lifetime_citations': int(group_data['lifetime_citations']),
+                'min_year': min_year,
+                'max_year': max_year,
+                'top_journals': group_data['journals'].most_common(5)
+            })
+
+        # Sort by total publications (descending)
+        group_stats.sort(key=lambda x: x['publications'], reverse=True)
+        return group_stats
+
+
+
 class HTMLGenerator:
     """Generates HTML content for the scholarly network visualization"""
 
@@ -508,6 +725,10 @@ class HTMLGenerator:
         self.css_dir = self.output_dir / "css"
         self.data_dir = self.output_dir / "data"
         self.author_aliases = author_aliases or {}
+
+        # Initialize the group data and prepare it for downstream steps
+        self.group_data = ResearchGroupData(data)
+        self.group_data.build_group_data()
 
     def generate_site(self):
         """Generate the complete website"""
@@ -824,10 +1045,18 @@ class HTMLGenerator:
         with open(self.css_dir / "style.css", 'w') as f:
             f.write(css_content)
 
-        # JavaScript for network visualization
-        network_js = """
-            function createNetwork(data, containerId) {
-                console.log("Creating network with data:", data);
+        # Generate the unified network JavaScript
+        self._generate_js_for_network_vis()
+
+        print(" - Generated CSS and JavaScript assets")
+
+
+    def _generate_js_for_network_vis(self):
+        """Generate unified JavaScript for both author and group network visualizations"""
+
+        js_for_network_vis = """
+            function createNetworkVis(data, containerId, networkType = 'author') {
+                console.log(`Creating ${networkType} network with data:`, data);
 
                 // Set up dimensions and SVG
                 const container = document.getElementById(containerId);
@@ -840,16 +1069,16 @@ class HTMLGenerator:
                 const height = container.offsetHeight;
 
                 // Add padding to keep nodes away from edges
-                const padding = 50;  // Added padding value
+                const padding = 50;
 
                 // Check if data is valid
                 if (!data || !data.nodes || !data.links || data.nodes.length === 0) {
-                    console.error("Invalid data for network visualization", data);
-                    container.innerHTML = '<p style="color:red">Invalid data for network visualization</p>';
+                    console.error(`Invalid data for ${networkType} network visualization`, data);
+                    container.innerHTML = `<p style="color:red">Invalid data for ${networkType} network visualization</p>`;
                     return;
                 }
 
-                console.log(`Creating network with ${data.nodes.length} nodes and ${data.links.length} links`);
+                console.log(`Creating ${networkType} network with ${data.nodes.length} nodes and ${data.links.length} links`);
 
                 // Clear any existing content
                 container.innerHTML = '';
@@ -877,7 +1106,7 @@ class HTMLGenerator:
                     .force("link", d3.forceLink(data.links).id(d => d.id).distance(d => Math.max(100, 300 - (d.weight * 15))))
                     .force("charge", d3.forceManyBody().strength(-500))
                     .force("center", d3.forceCenter(width / 2, height / 2))
-                    .force("collision", d3.forceCollide().radius(d => computeNodeRadius(d) + 15))
+                    .force("collision", d3.forceCollide().radius(d => computeNodeRadius(d, networkType) + 15))
                     .force("positioning", positioning);
 
                 // Create the links
@@ -889,22 +1118,39 @@ class HTMLGenerator:
                     .attr("stroke-opacity", d => Math.min(0.95, 0.1 + (d.weight * 0.2)))
                     .attr("stroke-width", d => Math.sqrt(d.weight) * 1.5);
 
-                // Create the nodes
-                const node = svg.append("g")
+                // Create node group for both shapes and labels
+                const nodeGroup = svg.append("g");
+
+                // Create nodes
+                const node = nodeGroup
                     .selectAll("circle")
                     .data(data.nodes)
                     .enter().append("circle")
-                    .attr("r", computeNodeRadius)
-                    .attr("fill", d => colorByMetric(d))
+                    .attr("r", d => computeNodeRadius(d, networkType))
+                    .attr("fill", d => colorByMetric(d, networkType));
+
+                // Add common interactions to nodes
+                node
                     .call(drag(simulation))
                     .on("mouseover", function(event, d) {
                         tooltip.transition()
                             .duration(200)
                             .style("opacity", .9);
-                        tooltip.html(`<strong>${d.name}</strong><br>
-                                    Lifetime publications: ${d.publications}<br>
-                                    Lifetime Citations: ${d.citations}<br>
-                                    Lifetime h-index: ${d.h_index}`)
+
+                        let tooltipContent;
+                        if (networkType === 'group') {
+                            tooltipContent = `<strong>${d.name}</strong><br>
+                                            Num Members: ${d.authors}<br>
+                                            Publications: ${d.publications}<br>
+                                            Citations: ${d.citations}`;
+                        } else {
+                            tooltipContent = `<strong>${d.name}</strong><br>
+                                            Publications: ${d.publications}<br>
+                                            Citations: ${d.citations}<br>
+                                            h-index: ${d.h_index}`;
+                        }
+
+                        tooltip.html(tooltipContent)
                             .style("left", (event.pageX + 10) + "px")
                             .style("top", (event.pageY - 28) + "px");
                     })
@@ -914,7 +1160,12 @@ class HTMLGenerator:
                             .style("opacity", 0);
                     })
                     .on("click", function(event, d) {
-                        window.location.href = `authors/${d.id}.html`;
+                        if (networkType === 'author') {
+                            window.location.href = `authors/${d.id}.html`;
+                        } else {
+                            console.log("Clicked on group:", d.name);
+                            // Future: link to group pages when implemented
+                        }
                     });
 
                 // Add node labels with background
@@ -924,19 +1175,30 @@ class HTMLGenerator:
                     .enter().append("g")
                     .style("pointer-events", "none");
 
-                // Add background rectangles
+                // Add background rectangles for labels
                 labelGroup.append("rect")
                     .attr("fill", "white")
                     .attr("opacity", 0.6)
-                    .attr("rx", 2) // rounded corners
+                    .attr("rx", 2)
                     .attr("ry", 2);
 
                 // Add text labels
                 const label = labelGroup.append("text")
                     .attr("font-size", 12)
-                    .attr("dx", d => computeNodeRadius(d) + 5)
+                    .attr("font-weight", "normal")
+                    .attr("text-anchor", "start")
                     .attr("dy", ".35em")
-                    .text(d => d.name.split(' ').pop())
+                    .text(d => {
+                        if (networkType === 'group') {
+                            // Truncate long group names
+                            const name = d.name;
+                            return name.length > 40 ? name.substring(0, 37) + " ..." : name;
+                        } else {
+                            // Show last name for authors
+                            return d.name.split(' ').pop();
+                        }
+                    })
+                    .attr("fill", "black")
                     .style("pointer-events", "none");
 
                 // Add simulation ticking with boundary constraints
@@ -947,39 +1209,49 @@ class HTMLGenerator:
                         .attr("x2", d => d.target.x)
                         .attr("y2", d => d.target.y);
 
-                    // Constrain nodes within padding
+                    // Position circles (same for both network types now)
                     node
-                        .attr("cx", d => d.x = Math.max(padding + computeNodeRadius(d),
-                                            Math.min(width - padding - computeNodeRadius(d), d.x)))
-                        .attr("cy", d => d.y = Math.max(padding + computeNodeRadius(d),
-                                            Math.min(height - padding - computeNodeRadius(d), d.y)));
+                        .attr("cx", d => d.x = Math.max(padding + computeNodeRadius(d, networkType),
+                                            Math.min(width - padding - computeNodeRadius(d, networkType), d.x)))
+                        .attr("cy", d => d.y = Math.max(padding + computeNodeRadius(d, networkType),
+                                            Math.min(height - padding - computeNodeRadius(d, networkType), d.y)));
 
-                // Position labels with the node
-                label
-                    .attr("x", d => d.x)
-                    .attr("y", d => d.y);
+                    // Position labels to the right of circles (same for both)
+                    label
+                        .attr("x", d => d.x + computeNodeRadius(d, networkType) + 5)
+                        .attr("y", d => d.y);
 
-                // Position and size background rectangles
-                labelGroup.selectAll("rect")
-                    .attr("x", d => d.x + computeNodeRadius(d) + 3)
-                    .attr("y", d => d.y - 8)
-                    .attr("width", function(d) {
-                        const textWidth = d.name.split(' ').pop().length * 7; // approximate width
-                        return textWidth + 4;
-                    })
-                    .attr("height", 16);
+                    // Position and size background rectangles for labels (same for both)
+                    labelGroup.selectAll("rect")
+                        .attr("x", d => d.x + computeNodeRadius(d, networkType) + 3)
+                        .attr("y", d => d.y - 8)
+                        .attr("width", function(d) {
+                            if (networkType === 'group') {
+                                const displayName = d.name.length > 40 ? d.name.substring(0, 37) + " ..." : d.name;
+                                return displayName.length * 6;
+                            } else {
+                                return d.name.split(' ').pop().length * 7 + 4;
+                            }
+                        })
+                        .attr("height", 16);
                 });
 
-                // Helper function to compute node radius based on publications
-                function computeNodeRadius(d) {
+                // Helper function to compute node radius/size based on publications
+                function computeNodeRadius(d, networkType) {
                     return Math.max(5, Math.min(25, 5 + Math.sqrt(d.publications) * 2));
                 }
 
-                // Helper function to color nodes based on citations
-                function colorByMetric(d) {
-                    const colorScale = d3.scaleSequential(d3.interpolateBlues)
-                        .domain([0, d3.max(data.nodes, n => n.h_index || 0) || 10]);
-                    return colorScale(d.h_index || 0);
+                // Helper function to color nodes based on metrics
+                function colorByMetric(d, networkType) {
+                    if (networkType === 'group') {
+                        const colorScale = d3.scaleSequential(d3.interpolateBlues)
+                            .domain([0, d3.max(data.nodes, n => n.citations || 0) || 20]);
+                        return colorScale(d.citations || 0);
+                    } else {
+                        const colorScale = d3.scaleSequential(d3.interpolateBlues)
+                            .domain([0, d3.max(data.nodes, n => n.h_index || 0) || 10]);
+                        return colorScale(d.h_index || 0);
+                    }
                 }
 
                 // Helper function to count connections for a node
@@ -1014,19 +1286,28 @@ class HTMLGenerator:
                         .on("end", dragended);
                 }
             }
+
+            // Convenience functions for backward compatibility and cleaner calls
+            function createNetwork(data, containerId) {
+            }
         """
 
         with open(self.js_dir / "network.js", 'w') as f:
-            f.write(network_js)
+            f.write(js_for_network_vis)
 
-        print(" - Generated CSS and JavaScript assets")
+
 
     def _generate_data_files(self):
         """Generate JSON data files for visualizations"""
         # Network data
-        network_data = self.data.get_coauthorship_data()
+        author_network_data = self.data.get_coauthorship_data()
         with open(self.data_dir / "network.json", 'w') as f:
-            json.dump(network_data, f, indent=2)
+            json.dump(author_network_data, f, indent=2)
+
+        # NEW: Group network data
+        group_network_data = self.group_data.get_group_coauthorship_data()
+        with open(self.data_dir / "group_network.json", 'w') as f:
+            json.dump(group_network_data, f, indent=2)
 
         # Journal stats
         journal_stats = self.data.get_journal_stats()
@@ -1035,13 +1316,88 @@ class HTMLGenerator:
 
         print(" - Generated data files")
 
+
+    def _add_research_groups_table(self, html, min_year, max_year):
+        """Add the research groups table to the index page"""
+
+        # Get group statistics
+        group_stats = self.group_data.get_group_stats()
+
+        if not group_stats:
+            return html  # No groups to display
+
+        html += f"""
+                <div class="card">
+                    <h2 class="card-title">Research groups from the {self.institute_name} included in this report</h2>
+                    <table id="groups-table" class="display">
+                        <thead>
+                            <tr>
+                                <th>Research Group</th>
+                                <th style="text-align: center;">Num Gruop Members</th>
+                                <th style="text-align: center;">Group Publications<br/>({min_year}-{max_year})</th>
+                                <th style="text-align: center;">Group Citations<br/>({min_year}-{max_year})</th>
+                                <th style="text-align: center;">Group Avg. Citations<br/>({min_year}-{max_year})</th>
+                                <th style="text-align: center;">Group Publications<br/>(Lifetime)</th>
+                                <th style="text-align: center;">Group Citations<br/>(Lifetime)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        """
+
+        for group in group_stats:
+            # Create author list with links
+            author_links = []
+            for author in group['authors']:
+                author_links.append(f"<a href='authors/{author['id']}.html'>{author['name']}</a>")
+            authors_display = "; ".join(author_links) if author_links else "No authors"
+
+            # Truncate authors list if too long
+            if len(authors_display) > 200:
+                # Count how many authors we can fit
+                temp_display = ""
+                author_count = 0
+                for author_link in author_links:
+                    if len(temp_display + author_link) < 180:
+                        if temp_display:
+                            temp_display += "; "
+                        temp_display += author_link
+                        author_count += 1
+                    else:
+                        break
+                remaining = len(author_links) - author_count
+                authors_display = temp_display + f"; ... and {remaining} more"
+
+            html += f"""
+                            <tr>
+                                <td><strong>{group['name']}</strong></td>
+                                <td style="text-align: center;" title="{'; '.join([a['name'] for a in group['authors']])}">{group['author_count']}</td>
+                                <td style="text-align: center;">{group['publications']}</td>
+                                <td style="text-align: center;">{group['citations']}</td>
+                                <td style="text-align: center;">{group['avg_citations']}</td>
+                                <td style="text-align: center;">{group['lifetime_publications']}</td>
+                                <td style="text-align: center;">{group['lifetime_citations']}</td>
+                            </tr>
+            """
+
+        html += """
+                        </tbody>
+                    </table>
+                </div>
+        """
+
+        return html
+
+
     def _generate_index_page(self):
         """Generate the index page with network visualization (updated to show enhanced info)"""
         html = self._page_header("Scholarly Data Visualization", active_page="index")
 
-        # Get network data to embed directly
-        network_data = self.data.get_coauthorship_data()
-        network_json = json.dumps(network_data)
+        # Get network data to for authors and groups to embed them later directly
+        author_network_data = self.data.get_coauthorship_data()
+        author_network_json = json.dumps(author_network_data)
+
+        group_network_data = self.group_data.get_group_coauthorship_data()
+        group_network_json = json.dumps(group_network_data)
 
         # Calculate total stats for summary
         total_publications = len(self.data.publications)
@@ -1119,7 +1475,25 @@ class HTMLGenerator:
                     <canvas id="yearly-publications-chart"></canvas>
                 </div>
                 <div style="clear: both; height: 60px;"></div>
-            </div>
+            </div>"""
+
+        # Add the group network section
+        group_network_data = self.group_data.get_group_coauthorship_data()
+        group_network_json = json.dumps(group_network_data)
+
+        total_groups = len(self.group_data.groups)
+        total_collaborations = self.group_data.group_coauthor_network.number_of_edges()
+
+        html += f"""
+                    <div class="card">
+                        <h2 class="card-title">Inter-Group Collaboration Network</h2>
+                        <p>This network shows the structure of {total_collaborations} inter-group collaborations between the <b>{total_groups}</b> research groups at the {self.institute_name}.
+                        Lines connect groups that have co-authored publications together, with thicker lines indicating more collaborations.</p>
+                        <div id="group-network" class="network-container"></div>
+                    </div>
+        """
+
+        html += f"""
 
             <div class="card">
                 <h2 class="card-title">Citation Trends</h2>
@@ -1215,33 +1589,27 @@ class HTMLGenerator:
         html += """
                     </tbody>
                 </table>
-            </div>
-        </div>
+            </div>"""
 
+        html = self._add_research_groups_table(html, min_year, max_year)
+
+        html += """</div>"""
+
+        html += """
         <script src="https://d3js.org/d3.v7.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
         <script src="js/network.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 // Embed data directly in JavaScript instead of fetching
-                const networkData = """
-
-        html += network_json
-
-        html += """;
-                createNetwork(networkData, 'network');
+                // so we don't need a server ;)
+                createNetworkVis(""" + author_network_json + """, 'network', 'author');
+                createNetworkVis(""" + group_network_json + """, 'group-network', 'group');
 
                 // Publications per year chart
-                const pubYears = """
+                const pubYears = """ + json.dumps([str(y) for y in chart_years]) + """;
 
-        html += json.dumps([str(y) for y in chart_years])
-
-        html += """;
-                const pubCounts = """
-
-        html += json.dumps(chart_pub_counts)
-
-        html += """;
+                const pubCounts = """ + json.dumps(chart_pub_counts) + """;
 
                 const pubChart = new Chart(
                     document.getElementById('yearly-publications-chart'),
@@ -1372,6 +1740,19 @@ class HTMLGenerator:
                 ],
                 "autoWidth": false,  // Prevent automatic width calculation
                 "scrollX": true      // Add horizontal scrolling if needed
+            });
+
+            // Initialize the research groups table with DataTables
+            $('#groups-table').DataTable({
+                "paging": false,
+                "info": false,
+                "order": [[2, 'desc']],  // Default sort by publications (desc)
+                "columnDefs": [
+                    { "type": "html", "targets": 0 }, // For proper sorting of group names with HTML
+                    { "type": "num", "targets": [1, 2, 3, 4, 5, 6, 7, 8, 9] } // Numeric sorting for all metrics
+                ],
+                "autoWidth": false,
+                "scrollX": true
             });
 
         </script>
