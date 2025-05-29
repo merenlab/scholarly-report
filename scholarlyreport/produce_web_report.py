@@ -21,7 +21,7 @@ middle_author_c = '#DADADA'
 solo_author_c = '#FFBB00'
 
 
-def load_author_aliases(yaml_file):
+def load_additional_author_data(yaml_file):
     """Load author information from a YAML file (new enhanced format only)"""
     try:
         with open(yaml_file, 'r') as f:
@@ -53,7 +53,7 @@ def load_author_aliases(yaml_file):
 class PublicationData:
     """Handles loading and processing of publication data"""
 
-    def __init__(self, data_dir, excluded_journals=None, author_aliases=None):
+    def __init__(self, data_dir, excluded_journals=None, additional_author_data=None):
         """Initialize with the directory containing publication data"""
         self.data_dir = Path(data_dir)
         self.authors = {}  # Dictionary of author info (from _info.csv)
@@ -61,7 +61,7 @@ class PublicationData:
         self.author_publications = defaultdict(list)  # Publications by author
         self.coauthor_network = nx.Graph()  # Graph for co-authorship network
         self.journal_mapping = {}  # Mapping from raw journal names to standardized names
-        self.author_aliases = author_aliases or {}  # Dictionary of author aliases
+        self.additional_author_data = additional_author_data or {}  # Dictionary of additional author data
 
         # figure out journal names to be excluded
         self.excluded_journals = []
@@ -74,7 +74,7 @@ class PublicationData:
     def get_supplemental_author_info_from_user_YAML(self, scholar_id):
         """Get comprehensive author information including from YAML file"""
         base_info = self.authors.get(scholar_id, {})
-        yaml_info = self.author_aliases.get(scholar_id, {})
+        yaml_info = self.additional_author_data.get(scholar_id, {})
 
         # Merge information, prioritizing YAML data for enhanced fields
         merged_info = base_info.copy()
@@ -272,7 +272,7 @@ class PublicationData:
 
         This method checks:
         1. If the name matches the primary name in our dataset
-        2. If the name matches any alias defined in the author_aliases dict
+        2. If the name matches any alias defined in the additional_author_data dict
         3. Performs case-insensitive and whitespace-normalized matching
         4. Handles missing data gracefully
         """
@@ -301,8 +301,8 @@ class PublicationData:
                     return True
 
         # Check if scholar_id is in aliases and if the name matches any alias
-        if scholar_id in self.author_aliases:
-            aliases = self.author_aliases[scholar_id].get('aliases', [])
+        if scholar_id in self.additional_author_data:
+            aliases = self.additional_author_data[scholar_id].get('aliases', [])
 
             # Ensure aliases is a list and not None
             if aliases:
@@ -715,7 +715,7 @@ class ResearchGroupData:
 class HTMLGenerator:
     """Generates HTML content for the scholarly network visualization"""
 
-    def __init__(self, data, output_dir, institute_name=None, author_aliases=None):
+    def __init__(self, data, output_dir, institute_name=None, additional_author_data=None):
         """Initialize with publication data and output directory"""
         self.data = data
         self.institute_name = institute_name
@@ -725,7 +725,7 @@ class HTMLGenerator:
         self.js_dir = self.output_dir / "js"
         self.css_dir = self.output_dir / "css"
         self.data_dir = self.output_dir / "data"
-        self.author_aliases = author_aliases or {}
+        self.additional_author_data = additional_author_data or {}
 
         # Initialize the group data and prepare it for downstream steps
         self.group_data = ResearchGroupData(data)
@@ -3325,7 +3325,7 @@ def main():
     parser.add_argument("--output-dir", "-o", default="scholar_viz", help="Output directory for HTML files")
     parser.add_argument("--exclude-journals", type=str, help="Path to a text file that cointains journal names to exclude (one per line)")
     parser.add_argument("--institute-name", type=str, required=True, help="The name of the institute that brings together all the people in the data directory (i.e., ICBM, or HIFMB, etc)")
-    parser.add_argument("--author-aliases", type=str, help="Path to a YAML file containing author name aliases (alternative spellings of author names)")
+    parser.add_argument("--additional-author-data", type=str, help="Path to a YAML file containing additional author information. See the README for the file structure.")
 
     args = parser.parse_args()
 
@@ -3339,20 +3339,20 @@ def main():
         except Exception as e:
             print(f"Error reading exclusion file: {e}")
 
-    # Load author aliases if specified
-    if args.author_aliases:
-        author_aliases = load_author_aliases(args.author_aliases)
+    # Load additional author data if specified
+    if args.additional_author_data:
+        additional_author_data = load_additional_author_data(args.additional_author_data)
     else:
-        author_aliases = {}
+        additional_author_data = {}
 
     # Load the data
-    data = PublicationData(args.data_dir, excluded_journals=excluded_journals, author_aliases=author_aliases)
+    data = PublicationData(args.data_dir, excluded_journals=excluded_journals, additional_author_data=additional_author_data)
     if not data.load_data():
         print("Error: Failed to load data.")
         return 1
 
     # Generate the HTML site
-    generator = HTMLGenerator(data, args.output_dir, args.institute_name, author_aliases=author_aliases)
+    generator = HTMLGenerator(data, args.output_dir, args.institute_name, additional_author_data=additional_author_data)
     generator.generate_site()
 
     print(f"\nOpen {args.output_dir}/index.html in your web browser to view the report.")
