@@ -20,25 +20,33 @@ last_author_c = '#F44336'
 middle_author_c = '#DADADA'
 solo_author_c = '#FFBB00'
 
+
 def load_author_aliases(yaml_file):
-    """Load author aliases from a YAML file"""
+    """Load author information from a YAML file (new enhanced format only)"""
     try:
         with open(yaml_file, 'r') as f:
-            aliases = yaml.safe_load(f)
+            author_data = yaml.safe_load(f)
 
-        # Convert to the format we'll use: {scholar_id: [list of alternative names]}
-        aliases_dict = {}
-        for scholar_id, names in aliases.items():
-            if isinstance(names, list):
-                aliases_dict[scholar_id] = names
-            else:
-                # Handle single string case
-                aliases_dict[scholar_id] = [names]
+        # Convert to the format we'll use: {scholar_id: author_info_dict}
+        author_info_dict = {}
 
-        print(f"Loaded aliases for {len(aliases_dict)} authors from {yaml_file}")
-        return aliases_dict
+        for scholar_id, data in author_data.items():
+            # Expect dictionary format with optional fields
+            if not isinstance(data, dict):
+                print(f"Warning: Scholar ID {scholar_id} has invalid format, expected dictionary. Skipping.")
+                continue
+
+            author_info_dict[scholar_id] = {
+                'aliases': data.get('aliases', []),
+                'name': data.get('name'),
+                'appointment': data.get('appointment'),
+                'research_group': data.get('research_group')
+            }
+
+        print(f"Loaded information for {len(author_info_dict)} authors from {yaml_file}")
+        return author_info_dict
     except Exception as e:
-        print(f"Error loading author aliases from {yaml_file}: {str(e)}")
+        print(f"Error loading author information from {yaml_file}: {str(e)}")
         sys.exit(-1)
 
 
@@ -61,6 +69,31 @@ class PublicationData:
             for journal in excluded_journals:
                 self.excluded_journals.append(journal.lower())
             print(f"Excluding {len(self.excluded_journals)} journals...")
+
+
+    def get_supplemental_author_info_from_user_YAML(self, scholar_id):
+        """Get comprehensive author information including from YAML file"""
+        base_info = self.authors.get(scholar_id, {})
+        yaml_info = self.author_aliases.get(scholar_id, {})
+
+        # Merge information, prioritizing YAML data for enhanced fields
+        merged_info = base_info.copy()
+
+        # Use preferred name from YAML if available, otherwise use base name
+        if yaml_info.get('name'):
+            merged_info['preferred_name'] = yaml_info['name']
+        else:
+            merged_info['preferred_name'] = base_info.get('name', 'Unknown')
+
+        # Add enhanced information from YAML - all fields are optional
+        merged_info.update({
+            'appointment': yaml_info.get('appointment'),
+            'research_group': yaml_info.get('research_group'),
+            'aliases': yaml_info.get('aliases', [])
+        })
+
+        return merged_info
+
 
     def _check_author_in_publication(self, scholar_id, author_string):
         """
@@ -232,6 +265,7 @@ class PublicationData:
         except Exception as e:
             print(f"Error loading author info from {info_file}: {str(e)}")
 
+
     def is_author_match(self, name, scholar_id):
         """
         Check if a name matches any alias for the given scholar ID
@@ -240,6 +274,7 @@ class PublicationData:
         1. If the name matches the primary name in our dataset
         2. If the name matches any alias defined in the author_aliases dict
         3. Performs case-insensitive and whitespace-normalized matching
+        4. Handles missing data gracefully
         """
         if not name or not scholar_id:
             return False
@@ -251,7 +286,7 @@ class PublicationData:
         name_norm = self._standardize_name_dashes(name_norm)
 
         # Check if name matches the primary name in our dataset
-        if scholar_id in self.authors:
+        if scholar_id in self.authors and self.authors[scholar_id].get('name'):
             primary_name = ' '.join(self.authors[scholar_id]['name'].lower().split())
             primary_name = self._standardize_name_dashes(primary_name)
 
@@ -259,22 +294,31 @@ class PublicationData:
                 return True
 
             # While at it, check "A Name" cases for "Author Name" quickly
-            abbreviated_name_norm = primary_name.split(' ')[0][0] + ' ' + ' '.join(primary_name.split(' ')[1:])
-            abbreviated_name_norm = self._standardize_name_dashes(abbreviated_name_norm)
-            if len(name_norm.split(' ')[0]) == 1 and name_norm == abbreviated_name_norm:
+            if primary_name.split(' '):  # Ensure we have at least one part
+                abbreviated_name_norm = primary_name.split(' ')[0][0] + ' ' + ' '.join(primary_name.split(' ')[1:])
+                abbreviated_name_norm = self._standardize_name_dashes(abbreviated_name_norm)
+                if len(name_norm.split(' ')[0]) == 1 and name_norm == abbreviated_name_norm:
                     return True
 
         # Check if scholar_id is in aliases and if the name matches any alias
         if scholar_id in self.author_aliases:
-            for alias in self.author_aliases[scholar_id]:
-                alias_norm = ' '.join(alias.lower().split())
-                abbreviated_alias_norm = alias_norm.split(' ')[0][0] + ' ' + ' '.join(alias_norm.split(' ')[1:])
-                alias_norm = self._standardize_name_dashes(alias_norm)
-                abbreviated_alias_norm = self._standardize_name_dashes(abbreviated_alias_norm)
-                if alias_norm == name_norm or abbreviated_alias_norm == name_norm:
-                    return True
+            aliases = self.author_aliases[scholar_id].get('aliases', [])
+
+            # Ensure aliases is a list and not None
+            if aliases:
+                for alias in aliases:
+                    if not alias:  # Skip None or empty aliases
+                        continue
+                    alias_norm = ' '.join(str(alias).lower().split())
+                    if alias_norm.split(' '):  # Ensure we have at least one part
+                        abbreviated_alias_norm = alias_norm.split(' ')[0][0] + ' ' + ' '.join(alias_norm.split(' ')[1:])
+                        alias_norm = self._standardize_name_dashes(alias_norm)
+                        abbreviated_alias_norm = self._standardize_name_dashes(abbreviated_alias_norm)
+                        if alias_norm == name_norm or abbreviated_alias_norm == name_norm:
+                            return True
 
         return False
+
 
     def _standardize_name_dashes(self, name):
         # This is extremely annoying, but necessary :/ We have different kinds of
@@ -992,7 +1036,7 @@ class HTMLGenerator:
         print(" - Generated data files")
 
     def _generate_index_page(self):
-        """Generate the index page with network visualization"""
+        """Generate the index page with network visualization (updated to show enhanced info)"""
         html = self._page_header("Scholarly Data Visualization", active_page="index")
 
         # Get network data to embed directly
@@ -1059,7 +1103,7 @@ class HTMLGenerator:
         <div class="container">
             <div class="card">
                 <h2 class="card-title">{self.institute_name} Overview</h2>
-                <p>Between the years <b>{min_year} and {max_year}</b>, the <b>{total_authors}</b> reserchers of the {self.institute_name} included in this dataset poblished a total of <b>{total_publications}</b> articles in <a href="./journals.html">peer-reviewed journals or pre-print servers</a> that accumulated over <b>{total_citations}</b> citations collectively.</p>
+                <p>Between the years <b>{min_year} and {max_year}</b>, the <b>{total_authors}</b> researchers of the {self.institute_name} included in this dataset published a total of <b>{total_publications}</b> articles in <a href="./journals.html">peer-reviewed journals or pre-print servers</a> that accumulated over <b>{total_citations}</b> citations collectively.</p>
             </div>
 
             <div class="card">
@@ -1093,6 +1137,8 @@ class HTMLGenerator:
                     <thead>
                         <tr>
                             <th>Name</th>
+                            <th>Role</th>
+                            <th>Research Group</th>
                             <th style="text-align: center;">Publications<br/>({min_year}-{max_year})</th>
                             <th style="text-align: center;">Authorship Roles<br/>({min_year}-{max_year})</th>
                             <th style="text-align: center;">Citations<br/>({min_year}-{max_year})</th>
@@ -1105,23 +1151,61 @@ class HTMLGenerator:
                     <tbody>
         """
 
-        # Randomize the authors
+        # Group authors by research group for better organization
+        authors_by_group = {}
+        ungrouped_authors = []
+
         sorted_authors = list(self.data.authors.items())
         random.shuffle(sorted_authors)
 
         for author_id, author in sorted_authors:
+            supplemental_author_info = self.data.get_supplemental_author_info_from_user_YAML(author_id)
+            research_group = supplemental_author_info.get('research_group')
+
+            # Only group if research_group exists and is not empty
+            if research_group and research_group.strip():
+                if research_group not in authors_by_group:
+                    authors_by_group[research_group] = []
+                authors_by_group[research_group].append((author_id, author, supplemental_author_info))
+            else:
+                ungrouped_authors.append((author_id, author, supplemental_author_info))
+
+        # Display grouped authors first, then ungrouped
+        all_authors_display = []
+
+        # Sort groups alphabetically
+        for group_name in sorted(authors_by_group.keys()):
+            all_authors_display.extend(authors_by_group[group_name])
+
+        # Add ungrouped authors
+        all_authors_display.extend(ungrouped_authors)
+
+        for author_id, author, supplemental_author_info in all_authors_display:
             stats = author_stats[author_id]
             position_stats = self._calculate_author_position_stats(author_id)
             role_chart = self._generate_author_role_piechart(position_stats)
             pct_last_author = (position_stats['last'] / sum(position_stats.values())) if sum(position_stats.values()) > 0 else 0
 
+            # Use preferred name if available, with safe fallbacks
+            display_name = supplemental_author_info.get('preferred_name') or author.get('name', 'Unknown')
+
+            # Handle missing career stage and research group gracefully
+            appointment = supplemental_author_info.get('appointment') or '-'
+            research_group = supplemental_author_info.get('research_group') or '-'
+
+            # Ensure we have safe values for calculations
+            pub_count = stats['pub_count'] if stats['pub_count'] > 0 else 1  # Avoid division by zero
+            avg_citations = stats['included_citations'] / pub_count
+
             html += f"""
                         <tr>
-                            <td><a href="authors/{author_id}.html">{author.get('name', 'Unknown')}</a></td>
+                            <td><a href="authors/{author_id}.html">{display_name}</a></td>
+                            <td>{appointment}</td>
+                            <td>{research_group}</td>
                             <td style="text-align: center;">{stats['pub_count']}</td>
                             <td style="text-align: center;" data-sort="{pct_last_author}">{role_chart}</td>
                             <td style="text-align: center;">{stats['included_citations']}</td>
-                            <td style="text-align: center;">{stats['included_citations'] / stats['pub_count']:.1f}</td>
+                            <td style="text-align: center;">{avg_citations:.1f}</td>
                             <td style="text-align: center;">{stats['included_h_index']}</td>
                             <td style="text-align: center;">{stats['lifetime_citations']}</td>
                             <td style="text-align: center;">{stats['lifetime_h_index']}</td>
@@ -1300,7 +1384,6 @@ class HTMLGenerator:
 
         print(" - Generated index page")
 
-
     def _calculate_author_position_stats(self, author_id):
         """Calculate authorship position statistics for an author"""
         stats = {
@@ -1456,7 +1539,8 @@ class HTMLGenerator:
 
     def _generate_author_page(self, author_id, author_data):
         """Generate page for a single author"""
-        name = author_data.get('name', 'Unknown Author')
+        supplemental_author_info = self.data.get_supplemental_author_info_from_user_YAML(author_id)
+        name = supplemental_author_info.get('preferred_name') or author_data.get('name', 'Unknown Author')
 
         html = self._page_header(f"{name} - Scholar Profile", active_page="authors")
 
@@ -1586,6 +1670,72 @@ class HTMLGenerator:
 
         # Start the HTML page
         html += """<div class="container">"""
+
+        ###########################################################################
+        # Author stats card with enhanced information
+        ###########################################################################
+
+        # Build additional info section - handle missing fields gracefully
+        additional_info_parts = []
+        if supplemental_author_info.get('appointment') and supplemental_author_info['appointment'].strip():
+            additional_info_parts.append(f"<strong>Role:</strong> {supplemental_author_info['appointment']}")
+        if supplemental_author_info.get('research_group') and supplemental_author_info['research_group'].strip():
+            additional_info_parts.append(f"<strong>Research Group:</strong> {supplemental_author_info['research_group']}")
+
+        additional_info_html = ""
+        if additional_info_parts:
+            additional_info_html = "<p>" + " | ".join(additional_info_parts) + "</p>"
+
+        html += f"""
+            <div class="card">
+                <h2 class="card-title">{name}</h2>
+                {additional_info_html}
+
+                <p>Overview of the period between <b>{min_year}</b> to <b>{max_year}</b>:
+
+                <div class="author-stats">
+                    <div class="stat-box">
+                        <div class="stat-number">{total_pubs}</div>
+                        <div class="stat-label">Publications<br/>(Selected Period)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{total_citations}</div>
+                        <div class="stat-label">Citations<br/>(Selected Period)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{included_h_index}</div>
+                        <div class="stat-label">h-index<br/>(Selected Period)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{included_i10_index}</div>
+                        <div class="stat-label">i10-index<br/>(Selected Period)</div>
+                    </div>
+                </div>
+
+                <p>Lifetime overview:
+
+                <div class="author-stats">
+                    <div class="stat-box">
+                        <div class="stat-number">{author_data.get('publication_count', 'N/A')}</div>
+                        <div class="stat-label">Publications<br/>(Lifetime)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{author_data.get('total_citations', 'N/A')}</div>
+                        <div class="stat-label">Citations<br/>(Lifetime)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{author_data.get('h_index', 'N/A')}</div>
+                        <div class="stat-label">h-index<br/>(Lifetime)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{author_data.get('i10_index', 'N/A')}</div>
+                        <div class="stat-label">i10-index<br/>(Lifetime)</div>
+                    </div>
+                </div>
+
+                <p><a href="https://scholar.google.com/citations?user={author_id}" target="_blank">View Google Scholar Profile</a></p>
+            </div>
+            """
 
         ###########################################################################
         # Author stats card
